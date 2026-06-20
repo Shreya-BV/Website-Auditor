@@ -17,10 +17,11 @@ def get_database():
     return db_instance.db
 
 def connect_db():
-    print("Mongo URI loaded:", bool(MONGODB_URI))
+    print("MongoDB URI loaded:", bool(MONGODB_URI))
+    print("Database Name:", DATABASE_NAME)
     db_instance.client = AsyncIOMotorClient(MONGODB_URI, tz_aware=True)
     db_instance.db = db_instance.client[DATABASE_NAME]
-    print(f"Connected to MongoDB at {MONGODB_URI}, Database: {DATABASE_NAME}")
+    print(f"Connected to MongoDB Atlas securely. Database: {DATABASE_NAME}")
 
 def close_db():
     if db_instance.client:
