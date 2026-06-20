@@ -5,9 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from app.database.mongodb import connect_db, close_db
 from app.routes.api import router as api_router
@@ -30,11 +34,21 @@ app = FastAPI(
 # CORS Policy configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://website-auditor-two.vercel.app",
+        "http://localhost:4200"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming {request.method} request to {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Completed {request.method} {request.url.path} with status {response.status_code}")
+    return response
 
 # Mount API router
 # Mount API routers
