@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List
 from datetime import datetime, timedelta, timezone
 from bson import ObjectId
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 from app.database.mongodb import get_database
 from app.schemas.scan import ScanRequest, AuditReportResponse
@@ -24,6 +28,7 @@ def serialize_list(docs):
 
 @router.post("/scan", response_model=AuditReportResponse)
 async def scan_website(payload: ScanRequest, db=Depends(get_database)):
+    logger.info(f"Received scan request for URL: {payload.url}")
     if not payload.url or len(payload.url.strip()) == 0:
         raise HTTPException(status_code=400, detail="Invalid website URL.")
     
@@ -35,8 +40,10 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
             raise HTTPException(status_code=400, detail="Please enter a valid website domain.")
     
     try:
+        logger.info(f"Starting backend processing for {url}")
         # Run scanning engine
         report = await run_scan(url)
+        logger.info(f"Scan completed for {url}. Score: {report.get('overall_score')}")
         # Store in database (legacy)
         result = await db["scans"].insert_one(report)
         report["_id"] = str(result.inserted_id)
@@ -64,9 +71,11 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
         
         await process_audit_workflow(audit_report_dict, db)
         
+        logger.info(f"Successfully processed workflow for {url}")
         return report
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error scanning website {url}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Scan failed: {str(e)}")
 
 @router.get("/scan/{scan_id}", response_model=AuditReportResponse)
 async def get_scan_report(scan_id: str, db=Depends(get_database)):

@@ -49,8 +49,8 @@ async def check_url_status(client: httpx.AsyncClient, base_url: str, path: str) 
     parsed = urllib.parse.urlparse(base_url)
     target = f"{parsed.scheme}://{parsed.netloc}/{path.lstrip('/')}"
     try:
-        # Perform a quick GET request with a 2.0s timeout
-        response = await client.get(target, timeout=2.0, follow_redirects=True)
+        # Perform a quick GET request with a 15.0s timeout
+        response = await client.get(target, timeout=15.0, follow_redirects=True)
         return response.status_code in [200, 301, 302]
     except Exception:
         return False
@@ -71,7 +71,7 @@ async def run_scan(url: str) -> Dict[str, Any]:
     ssl_valid = False
     
     # Try fetching with SSL verification first
-    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, headers=headers) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers) as client:
         try:
             response = await client.get(url)
             html_content = response.text
@@ -85,7 +85,7 @@ async def run_scan(url: str) -> Dict[str, Any]:
             if "ssl" in str(e).lower() or "certificate" in str(e).lower():
                 # Retry with SSL verification disabled
                 try:
-                    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, headers=headers, verify=False) as client_unverified:
+                    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers, verify=False) as client_unverified:
                         response = await client_unverified.get(url)
                         html_content = response.text
                         ssl_valid = False  # HTTPS works but SSL certificate is invalid
