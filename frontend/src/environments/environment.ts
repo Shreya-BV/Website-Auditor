@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://website-auditor-production-6aab.up.railway.app/api'
+  apiUrl: 'http://127.0.0.1:8000/api'
 };
