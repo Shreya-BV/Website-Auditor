@@ -108,6 +108,9 @@ async def run_scan(url: str) -> Dict[str, Any]:
             sitemap_task, robots_task, llms_task
         )
 
+    print("Scraper completed")
+    print("Generating analysis")
+
     # 1. MEASUREMENT PILLAR (Max 20 points, 5 checks, 4 pts each)
     measurement_checks = {
         "google_analytics": ("google-analytics.com" in text_content or "ga.js" in text_content),

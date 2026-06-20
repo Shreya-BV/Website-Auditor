@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuditService } from '../../services/audit.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-audit-history',
@@ -38,7 +39,7 @@ export class AuditHistoryComponent implements OnInit {
 
   downloadPdf(reportId: string, event: Event) {
     event.stopPropagation();
-    window.open(`http://localhost:8000/api/audit/download/${reportId}`, '_blank');
+    window.open(`${environment.apiUrl}/audit/download/${reportId}`, '_blank');
   }
 
   deleteReport(reportId: string, event: Event) {

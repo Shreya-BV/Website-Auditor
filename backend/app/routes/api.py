@@ -26,8 +26,12 @@ def serialize_doc(doc):
 def serialize_list(docs):
     return [serialize_doc(doc) for doc in docs]
 
+import traceback
+
 @router.post("/scan", response_model=AuditReportResponse)
 async def scan_website(payload: ScanRequest, db=Depends(get_database)):
+    print("Scan request received")
+    print("Website URL:", payload.url)
     logger.info(f"Received scan request for URL: {payload.url}")
     if not payload.url or len(payload.url.strip()) == 0:
         raise HTTPException(status_code=400, detail="Invalid website URL.")
@@ -40,6 +44,7 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
             raise HTTPException(status_code=400, detail="Please enter a valid website domain.")
     
     try:
+        print("Starting scraper")
         logger.info(f"Starting backend processing for {url}")
         # Run scanning engine
         report = await run_scan(url)
@@ -71,11 +76,14 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
         
         await process_audit_workflow(audit_report_dict, db)
         
+        print("Returning response")
         logger.info(f"Successfully processed workflow for {url}")
         return report
     except Exception as e:
+        print("EXCEPTION ENCOUNTERED:")
+        print(traceback.format_exc())
         logger.error(f"Error scanning website {url}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Scan failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/scan/{scan_id}", response_model=AuditReportResponse)
 async def get_scan_report(scan_id: str, db=Depends(get_database)):
