@@ -1,0 +1,79 @@
+<div class="history-container">
+  <div class="header-section">
+    <h1 class="page-title">Audit History</h1>
+    <p class="page-subtitle">View and manage past website audits and their reports.</p>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state glass-card">
+      <div class="spinner"></div>
+      <p>Loading audit history...</p>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="error-state glass-card">
+      <span class="error-icon">⚠️</span>
+      <h2>Unable to Load History</h2>
+      <p>{{ errorMessage }}</p>
+      <button class="btn-primary" (click)="loadHistory()">Retry</button>
+    </div>
+  }
+
+  @if (!isLoading && !errorMessage) {
+    <div class="glass-card table-card">
+      @if (reports.length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">📁</div>
+          <h3>No Audits Found</h3>
+          <p>There are no recorded audits in the system yet.</p>
+          <a routerLink="/" class="btn-primary">Run an Audit</a>
+        </div>
+      } @else {
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Website</th>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Issues</th>
+                <th>Status</th>
+                <th class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (report of reports; track report._id || report.id) {
+                <tr class="table-row">
+                  <td class="font-medium">{{ report.website_url }}</td>
+                  <td class="text-muted">{{ report.created_at | date:'medium' }}</td>
+                  <td>
+                    <span class="score-badge" [ngClass]="getScoreColorClass(report.audit_score)">
+                      {{ report.audit_score }}
+                    </span>
+                  </td>
+                  <td>{{ report.issues_found }}</td>
+                  <td>
+                    <span class="status-badge completed">
+                      Completed
+                    </span>
+                  </td>
+                  <td class="actions-col">
+                    <div class="action-buttons">
+                      <button *ngIf="report.pdf_path" (click)="downloadPdf(report._id || report.id, $event)" class="btn-icon" title="Download Report">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                      </button>
+                      <button (click)="deleteReport(report._id || report.id, $event)" class="btn-icon delete" title="Delete Report">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+</div>

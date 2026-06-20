@@ -17,4 +17,20 @@ export class AuditService {
   getScanReport(id: string): Observable<AuditReport> {
     return this.http.get<AuditReport>(`${this.apiUrl}/scan/${id}`);
   }
+
+  getAuditReportDetails(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/audit/${id}`);
+  }
+
+  getAuditHistory(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/audit/history`);
+  }
+
+  deleteAudit(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/audit/${id}`);
+  }
+
+  resendEmail(id: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/audit/send-email/${id}`, {});
+  }
 }

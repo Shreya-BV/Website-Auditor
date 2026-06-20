@@ -1,0 +1,122 @@
+<div class="report-container">
+  
+  @if (isLoading) {
+    <div class="loading-state glass-card">
+      <div class="spinner"></div>
+      <p>Loading your comprehensive audit report...</p>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="error-state glass-card">
+      <span class="error-icon">⚠️</span>
+      <h2>Unable to load report. Please try again.</h2>
+      <p>{{ errorMessage }}</p>
+      <div class="actions">
+        <button class="btn-primary" (click)="loadReport(reportId)">Retry</button>
+        <a routerLink="/history" class="btn-secondary">Back to History</a>
+      </div>
+    </div>
+  }
+
+  @if (!isLoading && !errorMessage && report) {
+    <div class="report-content">
+      
+      <!-- Report Header -->
+      <header class="report-header glass-card">
+        <div class="header-main">
+          <div>
+            <h1 class="website-url">{{ report.website_url }}</h1>
+            <p class="audit-date">Audited on {{ report.created_at | date:'medium' }}</p>
+          </div>
+          <div class="score-display">
+            <div class="score-circle" [ngClass]="getScoreColorClass(report.audit_score)">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path class="circle"
+                  [attr.stroke-dasharray]="report.audit_score + ', 100'"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <text x="18" y="20.35" class="percentage">{{ report.audit_score }}</text>
+              </svg>
+            </div>
+            <p class="score-label">Overall Score</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- Category Breakdown -->
+      <section class="category-breakdown">
+        <h2 class="section-title">Category Breakdown</h2>
+        <div class="category-grid">
+          @for (key of getObjectKeys(report.category_scores); track key) {
+            <div class="category-card glass-card">
+              <h3>{{ getPillarTitle(key) }}</h3>
+              <div class="category-score">
+                <div class="score-bar-bg">
+                  <div class="score-bar-fill" 
+                       [ngClass]="getScoreColorClass(report.category_scores[key])"
+                       [style.width.%]="report.category_scores[key]">
+                  </div>
+                </div>
+                <span class="score-value">{{ report.category_scores[key] }} / 100</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Executive Summary -->
+      <section class="executive-summary glass-card">
+        <h2 class="section-title">Executive Summary</h2>
+        <div class="summary-content">
+          <p>
+            This report provides a comprehensive analysis of <strong>{{ report.website_url }}</strong>.
+            The overall audit score is <strong>{{ report.audit_score }} out of 100</strong>.
+            A total of <strong>{{ report.issues_found }} issues</strong> were identified that require attention to improve your website's performance, security, and discoverability.
+          </p>
+        </div>
+      </section>
+
+      <!-- Actionable Recommendations -->
+      <section class="recommendations">
+        <div class="section-header">
+          <h2 class="section-title">Actionable Recommendations</h2>
+          <span class="badge">{{ report.issues_found }} Issues Found</span>
+        </div>
+        
+        <div class="recommendations-list">
+          @if (report.recommendations?.length === 0) {
+            <div class="glass-card success-state">
+              <span class="success-icon">🏆</span>
+              <h3>Perfect Setup!</h3>
+              <p>We couldn't find any major issues with your website configuration.</p>
+            </div>
+          } @else {
+            @for (rec of report.recommendations; track rec.title) {
+              <div class="recommendation-card glass-card">
+                <div class="rec-header">
+                  <span class="rec-category">{{ getPillarTitle(rec.category) }}</span>
+                  <span class="rec-priority" [class.high]="rec.priority === 'High'">{{ rec.priority }} Priority</span>
+                </div>
+                <h3 class="rec-title">{{ rec.title }}</h3>
+                <p class="rec-desc">{{ rec.description }}</p>
+              </div>
+            }
+          }
+        </div>
+      </section>
+
+      <div class="report-footer">
+        <a routerLink="/history" class="btn-secondary">Back to Audit History</a>
+      </div>
+
+    </div>
+  }
+</div>

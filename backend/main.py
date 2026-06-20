@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from app.database.mongodb import connect_db, close_db
 from app.routes.api import router as api_router
-
+from app.routes.audit import router as audit_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup database connection
@@ -31,8 +31,9 @@ app.add_middleware(
 )
 
 # Mount API router
+# Mount API routers
 app.include_router(api_router, prefix="/api")
-
+app.include_router(audit_router, prefix="/api/audit")
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Website Auditor API. The service is running."}

@@ -9,6 +9,7 @@ from app.schemas.visitor import VisitorCreate, VisitorLog
 from app.schemas.lead import LeadCreate, Lead
 from app.schemas.dashboard import DashboardStats, DailyCount
 from app.scanners.engine import run_scan
+from app.routes.audit import process_audit_workflow
 
 router = APIRouter()
 
@@ -36,9 +37,33 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
     try:
         # Run scanning engine
         report = await run_scan(url)
-        # Store in database
+        # Store in database (legacy)
         result = await db["scans"].insert_one(report)
         report["_id"] = str(result.inserted_id)
+        
+        # New Audit Report System mapping
+        mapped_recs = []
+        for r in report.get("recommendations", []):
+            mapped_recs.append({
+                "category": r.get("pillar", "General"),
+                "title": r.get("item", "Issue"),
+                "description": r.get("recommendation", ""),
+                "priority": "High" if report.get("overall_score", 100) < 50 else "Medium",
+                "status": "Open"
+            })
+            
+        audit_report_dict = {
+            "website_url": report["url"],
+            "scan_type": "Full Audit",
+            "audit_score": report["overall_score"],
+            "category_scores": report["pillar_scores"],
+            "recommendations": mapped_recs,
+            "issues_found": len(mapped_recs),
+            "scan_status": "Completed"
+        }
+        
+        await process_audit_workflow(audit_report_dict, db)
+        
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
