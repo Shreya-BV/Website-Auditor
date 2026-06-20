@@ -1,5 +1,10 @@
 import os
 import uvicorn
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
