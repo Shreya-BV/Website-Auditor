@@ -1,0 +1,189 @@
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #F1F5F9;
+  --bg-glass: rgba(255, 255, 255, 0.8);
+  --border-glass: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  
+  --primary: #6366F1;
+  --primary-glow: rgba(99, 102, 241, 0.15);
+  --accent: #4F46E5;
+  --success: #10B981;
+  --success-glow: rgba(16, 185, 129, 0.15);
+  --error: #EF4444;
+  --error-glow: rgba(239, 68, 68, 0.15);
+  --warning: #F59E0B;
+  --warning-glow: rgba(245, 158, 11, 0.15);
+
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-premium: 0 8px 30px rgba(15, 23, 42, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(79, 70, 229, 0.03) 0%, transparent 40%);
+  background-attachment: fixed;
+  transition: var(--transition-smooth);
+}
+
+// Layout Wrapper
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 1rem;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem 0.5rem;
+  }
+}
+
+// Typography
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+// Premium glassmorphism cards
+.glass-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+  transition: var(--transition-smooth);
+}
+
+.glass-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+// Interactive inputs
+.custom-input {
+  width: 100%;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 0.875rem 1.25rem;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  outline: none;
+  transition: var(--transition-smooth);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.02);
+
+  &:focus {
+    border-color: var(--primary);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+}
+
+// Premium Buttons
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.875rem 1.75rem;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+  transition: var(--transition-smooth);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.5;
+  }
+}
+
+// Custom Scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-glass);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+// Snackbar styles
+.success-snackbar {
+  --mdc-snackbar-container-color: var(--success);
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.error-snackbar {
+  --mdc-snackbar-container-color: var(--error);
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  font-family: var(--font-body);
+  font-weight: 500;
+}

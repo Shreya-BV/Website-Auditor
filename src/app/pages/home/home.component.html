@@ -1,0 +1,91 @@
+<div class="home-container">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="badge">V1.0 MVP RELEASE</div>
+      <h1 class="hero-title">Audit Your Website. <br><span class="gradient-text">Fix Conversion Leaks.</span></h1>
+      <p class="hero-subtitle">
+        Scan your business website in seconds across 5 core growth pillars. Get a comprehensive score, spot missing tracking tags, and receive plain-English recommendations to boost conversions.
+      </p>
+    </div>
+
+    <!-- Scan Card -->
+    <div class="scan-card glass-card">
+      @if (!isLoading) {
+        <form (ngSubmit)="scanWebsite()" class="scan-form">
+          <div class="input-wrapper">
+            <span class="input-icon">🔗</span>
+            <input 
+              type="text" 
+              class="custom-input" 
+              name="url" 
+              placeholder="Enter your website URL (e.g. example.com)" 
+              [(ngModel)]="url"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-primary scan-btn">
+            <span>Scan Website</span>
+            <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M480-120 200-400l56-56 184 184v-568h80v568l184-184 56 56-280 280Z"/></svg>
+          </button>
+        </form>
+        @if (errorMessage) {
+          <div class="error-msg">
+            <span class="error-icon">⚠️</span>
+            <span>{{ errorMessage }}</span>
+          </div>
+        }
+      } @else {
+        <!-- Loading Animation -->
+        <div class="loader-container">
+          <div class="spinner-wrapper">
+            <div class="glow-ring"></div>
+            <div class="inner-pulse"></div>
+          </div>
+          <h3 class="loader-title">Auditing Website</h3>
+          <p class="loader-subtitle">{{ loadingProgressText }}</p>
+          <div class="loading-bar">
+            <div class="loading-bar-fill"></div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Value Pillars Grid -->
+  <section class="pillars-section">
+    <h2 class="section-title">The 5 Growth Pillars We Audit</h2>
+    <div class="pillars-grid">
+      <div class="pillar-card glass-card">
+        <div class="pillar-icon m-color">📊</div>
+        <h3 class="pillar-name">Measurement</h3>
+        <p class="pillar-desc">Verifies presence of analytics trackers (Google Analytics, GTM, Clarity, Hotjar) to ensure user interactions are properly recorded.</p>
+      </div>
+
+      <div class="pillar-card glass-card">
+        <div class="pillar-icon r-color">🎯</div>
+        <h3 class="pillar-name">Retargeting</h3>
+        <p class="pillar-desc">Checks for advertising tags (Meta Pixel, Google Ads, LinkedIn Insight) to guarantee audiences can be remarketed to.</p>
+      </div>
+
+      <div class="pillar-card glass-card">
+        <div class="pillar-icon c-color">⚡</div>
+        <h3 class="pillar-name">Conversion / CRM</h3>
+        <p class="pillar-desc">Detects contact forms, live chat modules, and CRM hooks to identify if your website is optimized for lead captures.</p>
+      </div>
+
+      <div class="pillar-card glass-card">
+        <div class="pillar-icon t-color">🔒</div>
+        <h3 class="pillar-name">Trust & Security</h3>
+        <p class="pillar-desc">Scans SSL certificate health, secure HTTPS redirects, and mandatory legal policies like privacy and terms conditions.</p>
+      </div>
+
+      <div class="pillar-card glass-card">
+        <div class="pillar-icon s-color">🚀</div>
+        <h3 class="pillar-name">Discovery / SEO</h3>
+        <p class="pillar-desc">Validates schema markups, Sitemap/robots settings, meta titles, descriptions, and the AI agent llms.txt standard.</p>
+      </div>
+    </div>
+  </section>
+</div>

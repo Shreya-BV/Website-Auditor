@@ -1,0 +1,120 @@
+<div class="leads-container">
+  
+  <!-- Loading state -->
+  @if (isLoading) {
+    <div class="loading-state glass-card">
+      <div class="spinner"></div>
+      <p>Loading captured leads...</p>
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (errorMessage) {
+    <div class="error-state glass-card">
+      <span class="error-icon">⚠️</span>
+      <h2>Leads List Unavailable</h2>
+      <p>{{ errorMessage }}</p>
+      <button class="btn-primary" (click)="loadLeads()">Retry Loading</button>
+    </div>
+  }
+
+  @if (!isLoading && !errorMessage) {
+    <div class="leads-content-wrapper">
+      
+      <!-- Page Header -->
+      <div class="header-section">
+        <h1 class="page-title">Captured Leads</h1>
+        <p class="page-subtitle">Manage and export marketing leads registered through the audit report page.</p>
+      </div>
+
+      <!-- Controls Row -->
+      <div class="controls-row glass-card">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            class="custom-input search-input" 
+            placeholder="Search by name, email, or website..." 
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilter()"
+          />
+        </div>
+        
+        <button class="btn-primary export-btn" (click)="exportToCsv()" [disabled]="filteredLeads.length === 0">
+          <span>Export CSV</span>
+          <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M480-320 280-520l56-56 144 144v-368h80v368l144-144 56 56-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+        </button>
+      </div>
+
+      <!-- Table Card -->
+      <div class="table-card glass-card">
+        <div class="table-responsive">
+          @if (filteredLeads.length === 0) {
+            <div class="empty-state">
+              <span class="empty-icon">📁</span>
+              <h3>No Leads Found</h3>
+              <p>Try refining your search terms or verify that new scans have been run.</p>
+            </div>
+          } @else {
+            <table class="leads-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Audited Website</th>
+                  <th class="text-center">Audit Score</th>
+                  <th>Registered At</th>
+                  <th class="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (lead of filteredLeads; track lead.email) {
+                  <tr>
+                    <td class="lead-name-cell">
+                      <div class="avatar-circle">
+                        {{ lead.name.charAt(0).toUpperCase() }}
+                      </div>
+                      <span class="name-text">{{ lead.name }}</span>
+                    </td>
+                    <td class="email-cell">{{ lead.email }}</td>
+                    <td class="url-cell">
+                      <a [href]="lead.website_url.startsWith('http') ? lead.website_url : 'https://' + lead.website_url" target="_blank" class="site-link">
+                        {{ lead.website_url }}
+                      </a>
+                    </td>
+                    <td class="text-center">
+                      <span class="score-badge" [ngClass]="lead.audit_score >= 70 ? 'high' : 'low'">
+                        {{ lead.audit_score }}
+                      </span>
+                    </td>
+                    <td class="date-cell">{{ lead.created_at ? formatDateIST(lead.created_at) : 'Not Available' }}</td>
+                    <td class="text-center action-cell">
+                      <button class="btn-icon danger" (click)="confirmDeleteModal(lead)" title="Delete Lead">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+
+    </div>
+  }
+
+  <!-- Delete Confirmation Modal -->
+  @if (leadToDelete) {
+    <div class="modal-overlay">
+      <div class="modal-content glass-card">
+        <h2>Delete Lead</h2>
+        <p>Are you sure you want to permanently delete this lead?</p>
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
+          <button class="btn-primary danger-btn" (click)="confirmDelete()">Delete</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

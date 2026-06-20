@@ -1,0 +1,161 @@
+<div class="report-container">
+  <!-- Loading state -->
+  @if (isLoading) {
+    <div class="loading-state glass-card">
+      <div class="spinner"></div>
+      <p>Loading audit report results...</p>
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (errorMessage) {
+    <div class="error-state glass-card">
+      <span class="error-icon">⚠️</span>
+      <h2>Unable to Load Report</h2>
+      <p>{{ errorMessage }}</p>
+      <button class="btn-primary" routerLink="/">Go Back Home</button>
+    </div>
+  }
+
+  <!-- Main Report Content -->
+  @if (!isLoading && !errorMessage && report) {
+    <div class="report-content-wrapper">
+      
+      <!-- Back navigation & Title -->
+      <div class="header-section">
+        <a routerLink="/" class="back-link">
+          <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor"><path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/></svg>
+          <span>Run Another Scan</span>
+        </a>
+        <h1 class="report-title">Audit Report for <br><span class="url-text">{{ report.url }}</span></h1>
+        <p class="timestamp-text">Scanned on {{ report.created_at ? (report.created_at | date:'medium') : 'Not Available' }}</p>
+      </div>
+
+      <!-- Core Summary Row (Score + Lead Capture Side-by-Side) -->
+      <div class="summary-grid">
+        <!-- Circular Score Card -->
+        <div class="score-card glass-card" [ngClass]="getScoreColorClass(report.overall_score)">
+          <div class="radial-score">
+            <span class="score-number">{{ report.overall_score }}</span>
+            <span class="score-max">/100</span>
+          </div>
+          <div class="grade-badge" [ngClass]="getScoreColorClass(report.overall_score)">
+            {{ report.grade }}
+          </div>
+          <p class="score-label">Overall Website Performance Grade</p>
+        </div>
+
+        <!-- Lead Capture Card -->
+        <div class="lead-card glass-card">
+          @if (!leadSubmitted) {
+            <h3 class="lead-title">Want a PDF Audit Report?</h3>
+            <p class="lead-subtitle">Enter your name and email to save these recommendations and receive a free digital marketing consultation.</p>
+            
+            <form (ngSubmit)="submitLead()" class="lead-form">
+              <input 
+                type="text" 
+                class="custom-input" 
+                placeholder="Your Name" 
+                [(ngModel)]="leadName" 
+                name="leadName"
+                required
+              />
+              <input 
+                type="email" 
+                class="custom-input" 
+                placeholder="Email Address" 
+                [(ngModel)]="leadEmail" 
+                name="leadEmail"
+                required
+              />
+              <button type="submit" class="btn-primary lead-btn" [disabled]="isSubmittingLead">
+                @if (isSubmittingLead) {
+                  <span>Submitting...</span>
+                } @else {
+                  <span>Send Report</span>
+                }
+              </button>
+            </form>
+            @if (leadError) {
+              <p class="lead-error">⚠️ {{ leadError }}</p>
+            }
+          } @else {
+            <div class="lead-success">
+              <span class="success-icon">🎉</span>
+              <h3>Details Sent Successfully!</h3>
+              <p>We've captured your lead. Our team will email your PDF audit report and next steps to <strong>{{ leadEmail }}</strong> shortly.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 5 Pillars Detailed Checklists -->
+      <section class="pillars-section">
+        <h2 class="section-title">Growth Pillars Checklist</h2>
+        <div class="pillars-grid">
+          
+          <!-- Loop through the 5 pillars -->
+          @for (pillar of ['measurement', 'retargeting', 'conversion', 'trust', 'seo_ai']; track pillar) {
+            <div class="pillar-detail-card glass-card">
+              <div class="pillar-header">
+                <h3 class="pillar-name">{{ getPillarTitle(pillar) }}</h3>
+                <span class="pillar-score">
+                  {{ getPillarScore(pillar) }}/20
+                </span>
+              </div>
+              
+              <!-- Progress bar -->
+              <div class="pillar-progress-track">
+                <div class="pillar-progress-fill" [style.width.%]="(getPillarScore(pillar) / 20) * 100"></div>
+              </div>
+
+              <!-- Checklist items -->
+              <ul class="checklist">
+                @for (checkKey of getObjectKeys(getPillarChecks(pillar)); track checkKey) {
+                  <li class="check-item" [ngClass]="getPillarChecks(pillar)[checkKey] ? 'passed' : 'failed'">
+                    <span class="check-indicator">
+                      @if (getPillarChecks(pillar)[checkKey]) {
+                        ✓
+                      } @else {
+                        ✗
+                      }
+                    </span>
+                    <span class="check-label">{{ formatCheckName(checkKey) }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+        </div>
+      </section>
+
+      <!-- Recommendation Engine Engine Outputs -->
+      <section class="recommendations-section">
+        <h2 class="section-title">Actionable Recommendations</h2>
+        <div class="recommendations-container glass-card">
+          @if (report.recommendations.length === 0) {
+            <div class="no-recommendations">
+              <span class="perfect-icon">🌟</span>
+              <h3>Flawless Scan!</h3>
+              <p>This website passed all checkpoints successfully. No growth leaks were detected.</p>
+            </div>
+          } @else {
+            <div class="recommendations-list">
+              @for (rec of report.recommendations; track rec.item) {
+                <div class="recommendation-item" [ngClass]="rec.pillar">
+                  <div class="rec-header">
+                    <span class="rec-pillar-tag" [ngClass]="rec.pillar">{{ getPillarTitle(rec.pillar) }}</span>
+                    <h4 class="rec-item-title">{{ formatCheckName(rec.item) }} Missing</h4>
+                  </div>
+                  <p class="rec-text">{{ rec.recommendation }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+    </div>
+  }
+</div>

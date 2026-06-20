@@ -1,0 +1,141 @@
+<div class="dashboard-container">
+  
+  <!-- Loading state -->
+  @if (isLoading) {
+    <div class="loading-state glass-card">
+      <div class="spinner"></div>
+      <p>Loading analytics data...</p>
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (errorMessage) {
+    <div class="error-state glass-card">
+      <span class="error-icon">⚠️</span>
+      <h2>Dashboard Unavailable</h2>
+      <p>{{ errorMessage }}</p>
+      <button class="btn-primary" (click)="loadStats()">Retry Loading</button>
+    </div>
+  }
+
+  @if (!isLoading && !errorMessage && stats) {
+    <div class="dashboard-content-wrapper">
+      
+      <!-- Page Title -->
+      <div class="header-section">
+        <h1 class="page-title">Platform Analytics</h1>
+        <p class="page-subtitle">Real-time usage and conversion performance for the Website Auditor.</p>
+      </div>
+
+      <!-- KPI cards Row -->
+      <div class="kpi-grid">
+        <div class="kpi-card glass-card">
+          <div class="kpi-icon visitors">👥</div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ stats.total_visitors }}</span>
+            <span class="kpi-label">Total Platform Hits</span>
+          </div>
+        </div>
+
+        <div class="kpi-card glass-card">
+          <div class="kpi-icon scans">🔍</div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ stats.total_scans }}</span>
+            <span class="kpi-label">Total Audits Run</span>
+          </div>
+        </div>
+
+        <div class="kpi-card glass-card">
+          <div class="kpi-icon leads">📧</div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ stats.total_leads }}</span>
+            <span class="kpi-label">Leads Captured</span>
+          </div>
+        </div>
+
+        <div class="kpi-card glass-card">
+          <div class="kpi-icon conversion">📈</div>
+          <div class="kpi-info">
+            <span class="kpi-value">{{ conversionRate }}%</span>
+            <span class="kpi-label">Audit-to-Lead Rate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Card -->
+      <div class="chart-card glass-card">
+        <h3 class="chart-title">Activity Trend (Scans vs Leads)</h3>
+        <div class="chart-wrapper">
+          <canvas #analyticsChart></canvas>
+        </div>
+      </div>
+
+      <!-- Recent logs Row -->
+      <div class="logs-grid">
+        
+        <!-- Recent Leads Column -->
+        <div class="log-column glass-card">
+          <div class="column-header">
+            <h3>Recent Leads</h3>
+            <a routerLink="/leads" class="view-all-link">View All Leads →</a>
+          </div>
+          
+          <div class="log-list">
+            @if (stats.recent_leads.length === 0) {
+              <p class="empty-msg">No leads captured yet.</p>
+            } @else {
+              @for (lead of stats.recent_leads; track lead.email) {
+                <div class="log-item lead-item">
+                  <div class="item-avatar">
+                    {{ lead.name.charAt(0).toUpperCase() }}
+                  </div>
+                  <div class="item-details">
+                    <h4 class="item-title">{{ lead.name }}</h4>
+                    <p class="item-meta">{{ lead.email }}</p>
+                    <p class="item-submeta">{{ lead.website_url }}</p>
+                  </div>
+                  <div class="item-badge" [ngClass]="lead.audit_score >= 70 ? 'high' : 'low'">
+                    {{ lead.audit_score }}
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- Recent Visitors Column -->
+        <div class="log-column glass-card">
+          <div class="column-header">
+            <h3>Recent Platform Visitors</h3>
+          </div>
+          
+          <div class="log-list">
+            @if (stats.recent_visitors.length === 0) {
+              <p class="empty-msg">No visitor logs recorded yet.</p>
+            } @else {
+              @for (visitor of stats.recent_visitors; track visitor.created_at) {
+                <div class="log-item visitor-item">
+                  <div class="item-icon">
+                    {{ getBrowserIcon(visitor.browser) }}
+                  </div>
+                  <div class="item-details">
+                    <h4 class="item-title">{{ visitor.ip_address }}</h4>
+                    <p class="item-meta">
+                      {{ visitor.browser }} &middot; {{ visitor.device }} &middot; Ref: {{ visitor.referrer }}
+                    </p>
+                    <p class="item-submeta">Visited: {{ visitor.page_visited }}</p>
+                  </div>
+                  <div class="item-time">
+                    {{ visitor.created_at ? (visitor.created_at | date:'shortTime') : 'Not Available' }}
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  }
+</div>

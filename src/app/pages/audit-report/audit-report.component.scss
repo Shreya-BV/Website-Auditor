@@ -1,0 +1,388 @@
+.report-container {
+  padding: 2rem 0;
+  min-height: 80vh;
+}
+
+// Loading & Error States
+.loading-state, .error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 5rem 2rem;
+  max-width: 600px;
+  margin: 4rem auto;
+  gap: 1.5rem;
+
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid transparent;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
+.error-state {
+  .error-icon {
+    font-size: 3rem;
+  }
+  h2 {
+    font-size: 1.75rem;
+  }
+  p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+}
+
+// Header Navigation
+.header-section {
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition-smooth);
+    width: fit-content;
+
+    &:hover {
+      color: var(--accent);
+      transform: translateX(-2px);
+    }
+  }
+
+  .report-title {
+    font-size: 2.5rem;
+    line-height: 1.2;
+    font-weight: 800;
+
+    .url-text {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      word-break: break-all;
+    }
+  }
+
+  .timestamp-text {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+}
+
+// Summary Row (Score + Lead Form)
+.summary-grid {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Score Card
+.score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  // Colorful glows based on performance
+  &.excellent { background: radial-gradient(circle at center, rgba(16, 185, 129, 0.05) 0%, transparent 70%); border-color: rgba(16, 185, 129, 0.2); }
+  &.good { background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%); border-color: rgba(99, 102, 241, 0.2); }
+  &.average { background: radial-gradient(circle at center, rgba(245, 158, 11, 0.05) 0%, transparent 70%); border-color: rgba(245, 158, 11, 0.2); }
+  &.needs-improvement { background: radial-gradient(circle at center, rgba(239, 68, 68, 0.05) 0%, transparent 70%); border-color: rgba(239, 68, 68, 0.2); }
+
+  .radial-score {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 6px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+
+    .score-number {
+      font-size: 3.5rem;
+      font-family: var(--font-heading);
+      font-weight: 800;
+    }
+
+    .score-max {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-left: 2px;
+      margin-bottom: -15px;
+    }
+  }
+
+  &.excellent .radial-score { border-color: var(--success); box-shadow: 0 0 20px var(--success-glow); }
+  &.good .radial-score { border-color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+  &.average .radial-score { border-color: var(--warning); box-shadow: 0 0 20px var(--warning-glow); }
+  &.needs-improvement .radial-score { border-color: var(--error); box-shadow: 0 0 20px var(--error-glow); }
+
+  .grade-badge {
+    padding: 0.35rem 1.25rem;
+    border-radius: 99px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+
+    &.excellent { background: var(--success-glow); color: var(--success); }
+    &.good { background: var(--primary-glow); color: var(--primary); }
+    &.average { background: var(--warning-glow); color: var(--warning); }
+    &.needs-improvement { background: var(--error-glow); color: var(--error); }
+  }
+
+  .score-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+}
+
+// Lead Form Card
+.lead-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+
+  .lead-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+
+  .lead-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+
+  .lead-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .lead-error {
+    color: var(--error);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+  }
+
+  .lead-success {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+
+    .success-icon {
+      font-size: 3rem;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+      color: var(--success);
+    }
+
+    p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+  }
+}
+
+// Sections General
+.section-title {
+  font-size: 1.75rem;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+// Pillars Checklist Layout
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 4rem;
+}
+
+.pillar-detail-card {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+
+  .pillar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .pillar-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .pillar-score {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--primary);
+    }
+  }
+
+  .pillar-progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--border-glass);
+    border-radius: 99px;
+    overflow: hidden;
+
+    .pillar-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 99px;
+    }
+  }
+
+  .checklist {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.02);
+
+    .check-indicator {
+      font-weight: 800;
+      font-size: 1rem;
+      width: 20px;
+    }
+
+    &.passed {
+      color: var(--text-primary);
+      .check-indicator { color: var(--success); }
+    }
+
+    &.failed {
+      color: var(--text-secondary);
+      opacity: 0.75;
+      .check-indicator { color: var(--error); }
+    }
+  }
+}
+
+// Recommendations Section
+.recommendations-container {
+  padding: 2rem;
+
+  .no-recommendations {
+    text-align: center;
+    padding: 3rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+
+    .perfect-icon {
+      font-size: 2.5rem;
+    }
+
+    h3 {
+      color: var(--success);
+    }
+  }
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.recommendation-item {
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.02);
+  border-left: 4px solid var(--border-glass);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  // Theme borders left by pillar type
+  &.measurement { border-left-color: var(--primary); }
+  &.retargeting { border-left-color: var(--accent); }
+  &.conversion { border-left-color: #f43f5e; }
+  &.trust { border-left-color: var(--success); }
+  &.seo_ai { border-left-color: var(--warning); }
+
+  .rec-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    .rec-pillar-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+
+      &.measurement { background: var(--primary-glow); color: var(--primary); }
+      &.retargeting { background: rgba(79, 70, 229, 0.1); color: var(--accent); }
+      &.conversion { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
+      &.trust { background: var(--success-glow); color: var(--success); }
+      &.seo_ai { background: var(--warning-glow); color: var(--warning); }
+    }
+
+    .rec-item-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+  }
+
+  .rec-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
