@@ -100,7 +100,7 @@
               <div class="pillar-header">
                 <h3 class="pillar-name">{{ getPillarTitle(pillar) }}</h3>
                 <span class="pillar-score">
-                  {{ getPillarScore(pillar) }}/20
+                  {{ getPillarScore(pillar) | number:'1.0-1' }}/20
                 </span>
               </div>
               
@@ -112,15 +112,23 @@
               <!-- Checklist items -->
               <ul class="checklist">
                 @for (checkKey of getObjectKeys(getPillarChecks(pillar)); track checkKey) {
-                  <li class="check-item" [ngClass]="getPillarChecks(pillar)[checkKey] ? 'passed' : 'failed'">
-                    <span class="check-indicator">
-                      @if (getPillarChecks(pillar)[checkKey]) {
-                        ✓
-                      } @else {
-                        ✗
-                      }
-                    </span>
-                    <span class="check-label">{{ formatCheckName(checkKey) }}</span>
+                  <li class="check-item" [ngClass]="getPillarChecks(pillar)[checkKey]?.found ? 'passed' : 'failed'">
+                    <div class="check-main">
+                      <span class="check-indicator">
+                        @if (getPillarChecks(pillar)[checkKey]?.found) {
+                          ✓
+                        } @else {
+                          ✗
+                        }
+                      </span>
+                      <span class="check-label">{{ formatCheckName(checkKey) }}</span>
+                    </div>
+                    <div class="check-meta">
+                      <span class="confidence-badge" [ngClass]="{'high': getPillarChecks(pillar)[checkKey]?.confidence >= 90, 'low': getPillarChecks(pillar)[checkKey]?.confidence < 90}">
+                        Conf: {{ getPillarChecks(pillar)[checkKey]?.confidence }}%
+                      </span>
+                      <span class="method-text">Method: {{ getPillarChecks(pillar)[checkKey]?.method }}</span>
+                    </div>
                   </li>
                 }
               </ul>
@@ -130,7 +138,7 @@
         </div>
       </section>
 
-      <!-- Recommendation Engine Engine Outputs -->
+      <!-- Recommendation Engine Outputs -->
       <section class="recommendations-section">
         <h2 class="section-title">Actionable Recommendations</h2>
         <div class="recommendations-container glass-card">
@@ -146,9 +154,41 @@
                 <div class="recommendation-item" [ngClass]="rec.pillar">
                   <div class="rec-header">
                     <span class="rec-pillar-tag" [ngClass]="rec.pillar">{{ getPillarTitle(rec.pillar) }}</span>
-                    <h4 class="rec-item-title">{{ formatCheckName(rec.item) }} Missing</h4>
+                    <span class="priority-tag" [ngClass]="rec.priority?.toLowerCase() || 'medium'">
+                      {{ rec.priority || 'Medium' }} Priority
+                    </span>
                   </div>
-                  <p class="rec-text">{{ rec.recommendation }}</p>
+                  <h4 class="rec-item-title">{{ rec.issue || formatCheckName(rec.item) + ' Missing' }}</h4>
+                  <p class="rec-text main-recommendation">{{ rec.recommendation }}</p>
+                  
+                  <div class="rec-details-grid">
+                    @if(rec.reason) {
+                      <div class="rec-detail-block">
+                        <strong>Reason:</strong>
+                        <p>{{ rec.reason }}</p>
+                      </div>
+                    }
+                    @if(rec.business_impact) {
+                      <div class="rec-detail-block">
+                        <strong>Business Impact:</strong>
+                        <p>{{ rec.business_impact }}</p>
+                      </div>
+                    }
+                    @if(rec.how_to_fix) {
+                      <div class="rec-detail-block">
+                        <strong>How to Fix:</strong>
+                        <p>{{ rec.how_to_fix }}</p>
+                      </div>
+                    }
+                    <div class="rec-meta-row">
+                      @if(rec.estimated_time) {
+                        <span class="meta-badge time">⏳ {{ rec.estimated_time }}</span>
+                      }
+                      @if(rec.expected_score_increase) {
+                        <span class="meta-badge score">📈 +{{ rec.expected_score_increase }} Score</span>
+                      }
+                    </div>
+                  </div>
                 </div>
               }
             </div>

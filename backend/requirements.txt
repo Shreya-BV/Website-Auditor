@@ -7,3 +7,4 @@ pydantic
 dnspython
 reportlab
 python-dotenv
+playwright

@@ -2,6 +2,19 @@ export interface Recommendation {
   pillar: string;
   item: string;
   recommendation: string;
+  issue?: string;
+  reason?: string;
+  business_impact?: string;
+  how_to_fix?: string;
+  estimated_time?: string;
+  priority?: string;
+  expected_score_increase?: number;
+}
+
+export interface CheckResult {
+  found: boolean;
+  confidence: number;
+  method: string;
 }
 
 export interface AuditReport {
@@ -19,39 +32,39 @@ export interface AuditReport {
   };
   checks: {
     measurement: {
-      google_analytics: boolean;
-      gtm: boolean;
-      clarity: boolean;
-      hotjar: boolean;
+      google_analytics: CheckResult;
+      gtm: CheckResult;
+      clarity: CheckResult;
+      hotjar: CheckResult;
     };
     retargeting: {
-      meta_pixel: boolean;
-      google_ads: boolean;
-      linkedin_insight: boolean;
+      meta_pixel: CheckResult;
+      google_ads: CheckResult;
+      linkedin_insight: CheckResult;
     };
     conversion: {
-      contact_form: boolean;
-      whatsapp: boolean;
-      live_chat: boolean;
-      crm: boolean;
-      lead_popup: boolean;
+      contact_form: CheckResult;
+      whatsapp: CheckResult;
+      live_chat: CheckResult;
+      crm: CheckResult;
+      lead_popup: CheckResult;
     };
     trust: {
-      https: boolean;
-      ssl: boolean;
-      privacy_policy: boolean;
-      terms: boolean;
-      contact_page: boolean;
+      https: CheckResult;
+      ssl: CheckResult;
+      privacy_policy: CheckResult;
+      terms: CheckResult;
+      contact_page: CheckResult;
     };
     seo_ai: {
-      meta_title: boolean;
-      meta_description: boolean;
-      sitemap: boolean;
-      robots: boolean;
-      schema_markup: boolean;
-      opengraph: boolean;
-      twitter_card: boolean;
-      llms_txt: boolean;
+      meta_title: CheckResult;
+      meta_description: CheckResult;
+      sitemap: CheckResult;
+      robots: CheckResult;
+      schema_markup: CheckResult;
+      opengraph: CheckResult;
+      twitter_card: CheckResult;
+      llms_txt: CheckResult;
     };
   };
   recommendations: Recommendation[];

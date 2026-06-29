@@ -2,61 +2,309 @@ import httpx
 from bs4 import BeautifulSoup
 import urllib.parse
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import asyncio
+import re
+from playwright.async_api import async_playwright
 
-# Define Recommendation generator based on failed checks
 RECOMMENDATION_TEMPLATES = {
     "measurement": {
-        "google_analytics": "Google Analytics is missing. Install Google Analytics to track visitor behavior and understand traffic sources.",
-        "gtm": "Google Tag Manager (GTM) is missing. Use GTM to manage and deploy marketing tags without modifying code.",
-        "clarity": "Microsoft Clarity is missing. Install Microsoft Clarity to see visitor session recordings and heatmaps.",
-        "hotjar": "Hotjar is missing. Consider adding Hotjar to collect feedback and run user surveys on your website."
+        "google_analytics": {
+            "issue": "Google Analytics is missing",
+            "reason": "Unable to track visitor behavior, traffic sources, and website engagement.",
+            "business_impact": "Loss of critical data needed for marketing optimization and ROI tracking.",
+            "how_to_fix": "Create a GA4 property and install the tracking script in the <head> of your website.",
+            "estimated_time": "15 minutes",
+            "priority": "High",
+            "expected_score_increase": 4,
+            "recommendation": "Install Google Analytics to track visitor behavior and understand traffic sources."
+        },
+        "gtm": {
+            "issue": "Google Tag Manager is missing",
+            "reason": "Marketing tags are likely hardcoded or missing, making it difficult to deploy tracking pixels.",
+            "business_impact": "Slower marketing execution and reliance on developers for simple tracking changes.",
+            "how_to_fix": "Create a GTM container and add the GTM scripts immediately after the <head> and <body> tags.",
+            "estimated_time": "15 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 4,
+            "recommendation": "Use GTM to manage and deploy marketing tags without modifying code."
+        },
+        "clarity": {
+            "issue": "Microsoft Clarity is missing",
+            "reason": "No behavioral analytics or session recording tool detected.",
+            "business_impact": "Inability to see exactly how users interact with the site, causing missed UX improvements.",
+            "how_to_fix": "Sign up for Microsoft Clarity and install the tracking snippet.",
+            "estimated_time": "10 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 4,
+            "recommendation": "Install Microsoft Clarity to see visitor session recordings and heatmaps."
+        },
+        "hotjar": {
+            "issue": "Hotjar is missing",
+            "reason": "Missing user feedback and heatmap tracking.",
+            "business_impact": "Blind spots in understanding why users might be abandoning the site.",
+            "how_to_fix": "Install Hotjar via GTM or directly in the website code.",
+            "estimated_time": "10 minutes",
+            "priority": "Low",
+            "expected_score_increase": 4,
+            "recommendation": "Consider adding Hotjar to collect feedback and run user surveys on your website."
+        }
     },
     "retargeting": {
-        "meta_pixel": "Meta Pixel is missing. Install Meta Pixel to retarget website visitors through Facebook and Instagram advertising campaigns.",
-        "google_ads": "Google Ads Retargeting is missing. Set up Google Ads tags to reach previous visitors when they search on Google or browse other sites.",
-        "linkedin_insight": "LinkedIn Insight Tag is missing. Add the Insight Tag to measure conversions and retarget B2B audiences on LinkedIn."
+        "meta_pixel": {
+            "issue": "Meta Pixel is missing",
+            "reason": "Unable to track Facebook/Instagram ad conversions or build retargeting audiences.",
+            "business_impact": "Wasted ad spend and inability to reach people who previously visited your site.",
+            "how_to_fix": "Generate a Meta Pixel in Facebook Events Manager and install it.",
+            "estimated_time": "20 minutes",
+            "priority": "High",
+            "expected_score_increase": 6,
+            "recommendation": "Install Meta Pixel to retarget website visitors through Facebook and Instagram advertising campaigns."
+        },
+        "google_ads": {
+            "issue": "Google Ads Retargeting is missing",
+            "reason": "Google Ads conversion and remarketing tags are absent.",
+            "business_impact": "Inability to run effective Google Display or Search remarketing campaigns.",
+            "how_to_fix": "Install the Google Ads tag via GTM.",
+            "estimated_time": "15 minutes",
+            "priority": "High",
+            "expected_score_increase": 7,
+            "recommendation": "Set up Google Ads tags to reach previous visitors when they search on Google or browse other sites."
+        },
+        "linkedin_insight": {
+            "issue": "LinkedIn Insight Tag is missing",
+            "reason": "Cannot track B2B professional demographics or conversions from LinkedIn ads.",
+            "business_impact": "Missed opportunity for high-value B2B lead generation and retargeting.",
+            "how_to_fix": "Add the LinkedIn Insight Tag to your website footer or via GTM.",
+            "estimated_time": "10 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 7,
+            "recommendation": "Add the Insight Tag to measure conversions and retarget B2B audiences on LinkedIn."
+        }
     },
     "conversion": {
-        "contact_form": "No contact form detected. Add a clear contact form to capture visitor inquiries directly.",
-        "whatsapp": "WhatsApp integration is missing. Enable WhatsApp chat to let visitors connect with you instantly.",
-        "live_chat": "Live chat widget is missing. Install a chat tool (like Intercom, Drift, or Tawk.to) to engage visitors in real-time.",
-        "crm": "CRM integration is missing. Connect your site to a CRM (HubSpot, Salesforce, Zoho) to automate lead tracking.",
-        "lead_popup": "No popup lead form detected. Use exit-intent or timed popups to capture emails before visitors leave."
+        "contact_form": {
+            "issue": "Contact Form not found",
+            "reason": "No standard <form> elements detected for user inquiries.",
+            "business_impact": "Lower conversion rates as users have no easy way to contact the business.",
+            "how_to_fix": "Add a functional contact form on a dedicated contact page.",
+            "estimated_time": "1-2 hours",
+            "priority": "High",
+            "expected_score_increase": 4,
+            "recommendation": "Add a clear contact form to capture visitor inquiries directly."
+        },
+        "whatsapp": {
+            "issue": "WhatsApp integration missing",
+            "reason": "No wa.me or WhatsApp API links found.",
+            "business_impact": "Losing mobile users who prefer instant messaging over emails.",
+            "how_to_fix": "Add a WhatsApp floating button linking to your business number.",
+            "estimated_time": "15 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 4,
+            "recommendation": "Enable WhatsApp chat to let visitors connect with you instantly."
+        },
+        "live_chat": {
+            "issue": "Live Chat Widget missing",
+            "reason": "No customer support chat scripts detected.",
+            "business_impact": "Delayed response to customer objections, leading to lost sales.",
+            "how_to_fix": "Integrate tools like Tawk.to, Intercom, or Zendesk.",
+            "estimated_time": "30 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 4,
+            "recommendation": "Install a chat tool to engage visitors in real-time."
+        },
+        "crm": {
+            "issue": "CRM integration missing",
+            "reason": "No HubSpot, Salesforce, or Zoho tracking scripts found.",
+            "business_impact": "Manual lead entry, causing delays and potential loss of valuable prospects.",
+            "how_to_fix": "Install your CRM's tracking pixel on the website.",
+            "estimated_time": "20 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 4,
+            "recommendation": "Connect your site to a CRM to automate lead tracking."
+        },
+        "lead_popup": {
+            "issue": "Lead Popup missing",
+            "reason": "No exit-intent or newsletter popup detected.",
+            "business_impact": "Failing to capture the 90% of visitors who leave without buying.",
+            "how_to_fix": "Use a tool like OptinMonster or Mailchimp to create a lead magnet popup.",
+            "estimated_time": "1 hour",
+            "priority": "Low",
+            "expected_score_increase": 4,
+            "recommendation": "Use exit-intent or timed popups to capture emails before visitors leave."
+        }
     },
     "trust": {
-        "https": "Website does not force HTTPS. Upgrade to secure HTTPS to protect user data and improve search rankings.",
-        "ssl": "SSL Certificate is invalid or self-signed. Ensure you have a valid, trusted SSL certificate to prevent browser warning screens.",
-        "privacy_policy": "Privacy Policy is missing. Create a Privacy Policy page to satisfy legal requirements (GDPR/CCPA) and build trust.",
-        "terms": "Terms & Conditions page is missing. Publish Terms & Conditions to protect your business liability.",
-        "contact_page": "Contact page is missing. Create a dedicated contact page with clear business details."
+        "https": {
+            "issue": "Website is not enforcing HTTPS",
+            "reason": "The connection is not secure, exposing user data.",
+            "business_impact": "Browser warnings will scare away users, and Google will penalize SEO.",
+            "how_to_fix": "Configure your server to redirect all HTTP traffic to HTTPS.",
+            "estimated_time": "30 minutes",
+            "priority": "High",
+            "expected_score_increase": 4,
+            "recommendation": "Upgrade to secure HTTPS to protect user data and improve search rankings."
+        },
+        "ssl": {
+            "issue": "SSL Certificate is invalid or missing",
+            "reason": "The site does not have a valid, trusted SSL certificate.",
+            "business_impact": "Users will see a 'Your connection is not private' error, destroying trust.",
+            "how_to_fix": "Obtain a free certificate from Let's Encrypt or your hosting provider.",
+            "estimated_time": "1 hour",
+            "priority": "High",
+            "expected_score_increase": 4,
+            "recommendation": "Ensure you have a valid, trusted SSL certificate to prevent browser warning screens."
+        },
+        "privacy_policy": {
+            "issue": "Privacy Policy missing",
+            "reason": "No link to a privacy policy found in the page.",
+            "business_impact": "Non-compliance with GDPR/CCPA, risk of fines, and advertising accounts getting banned.",
+            "how_to_fix": "Generate a Privacy Policy and link it in the footer.",
+            "estimated_time": "1 hour",
+            "priority": "High",
+            "expected_score_increase": 4,
+            "recommendation": "Create a Privacy Policy page to satisfy legal requirements and build trust."
+        },
+        "terms": {
+            "issue": "Terms & Conditions missing",
+            "reason": "No link to Terms & Conditions found.",
+            "business_impact": "Legal vulnerability regarding user disputes and liability.",
+            "how_to_fix": "Generate a Terms & Conditions page and link it in the footer.",
+            "estimated_time": "1 hour",
+            "priority": "Medium",
+            "expected_score_increase": 4,
+            "recommendation": "Publish Terms & Conditions to protect your business liability."
+        },
+        "contact_page": {
+            "issue": "Contact page link missing",
+            "reason": "Could not find a dedicated link to a contact page.",
+            "business_impact": "Reduces brand legitimacy and frustrates users trying to reach you.",
+            "how_to_fix": "Create a Contact Us page and add it to the main navigation or footer.",
+            "estimated_time": "30 minutes",
+            "priority": "High",
+            "expected_score_increase": 4,
+            "recommendation": "Create a dedicated contact page with clear business details."
+        }
     },
     "seo_ai": {
-        "meta_title": "Meta Title is missing or empty. Write a unique, keyword-rich title tag to rank higher in search engines.",
-        "meta_description": "Meta Description is missing. Write a compelling meta description to improve click-through rates from search results.",
-        "sitemap": "Sitemap.xml not found. Create a sitemap to help search engines find and index all your website pages.",
-        "robots": "Robots.txt not found. Add a robots.txt file to instruct search crawlers which pages they should or should not index.",
-        "schema_markup": "Schema Markup is missing. Add structured data schema to help Google and AI assistants understand your business content.",
-        "opengraph": "OpenGraph tags are missing. Add OpenGraph metadata to control how your pages look when shared on Facebook and LinkedIn.",
-        "twitter_card": "Twitter Card metadata is missing. Set up Twitter Card tags to ensure rich previews on X (formerly Twitter).",
-        "llms_txt": "llms.txt file is missing. Add an llms.txt file at the root of your domain to guide AI crawlers and LLM search agents indexing your business offerings."
+        "meta_title": {
+            "issue": "Meta Title missing or empty",
+            "reason": "The <title> tag is not properly defined.",
+            "business_impact": "Poor visibility in search engine results and unappealing browser tabs.",
+            "how_to_fix": "Add a descriptive, keyword-optimized <title> tag to the <head>.",
+            "estimated_time": "15 minutes",
+            "priority": "High",
+            "expected_score_increase": 2,
+            "recommendation": "Write a unique, keyword-rich title tag to rank higher in search engines."
+        },
+        "meta_description": {
+            "issue": "Meta Description missing",
+            "reason": "The <meta name='description'> tag is absent.",
+            "business_impact": "Lower click-through rates from Google search results.",
+            "how_to_fix": "Add a compelling meta description tag.",
+            "estimated_time": "15 minutes",
+            "priority": "High",
+            "expected_score_increase": 3,
+            "recommendation": "Write a compelling meta description to improve click-through rates from search results."
+        },
+        "sitemap": {
+            "issue": "Sitemap.xml not found",
+            "reason": "No sitemap detected at the standard /sitemap.xml path.",
+            "business_impact": "Search engines may take longer to index new pages.",
+            "how_to_fix": "Generate an XML sitemap and submit it to Google Search Console.",
+            "estimated_time": "30 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 3,
+            "recommendation": "Create a sitemap to help search engines find and index all your website pages."
+        },
+        "robots": {
+            "issue": "Robots.txt not found",
+            "reason": "Missing robots.txt file at the root directory.",
+            "business_impact": "Inability to control how search engines crawl the site.",
+            "how_to_fix": "Create a robots.txt file allowing required crawlers.",
+            "estimated_time": "15 minutes",
+            "priority": "Medium",
+            "expected_score_increase": 2,
+            "recommendation": "Add a robots.txt file to instruct search crawlers which pages they should or should not index."
+        },
+        "schema_markup": {
+            "issue": "Schema Markup missing",
+            "reason": "No JSON-LD structured data found on the page.",
+            "business_impact": "Missing out on Google Rich Snippets (stars, FAQs, organization info).",
+            "how_to_fix": "Implement Organization or LocalBusiness schema via JSON-LD.",
+            "estimated_time": "1 hour",
+            "priority": "Medium",
+            "expected_score_increase": 3,
+            "recommendation": "Add structured data schema to help Google and AI assistants understand your business content."
+        },
+        "opengraph": {
+            "issue": "OpenGraph tags missing",
+            "reason": "No og:title or og:image tags detected.",
+            "business_impact": "Links shared on social media will look unappealing without preview images.",
+            "how_to_fix": "Add OpenGraph meta tags to the <head>.",
+            "estimated_time": "20 minutes",
+            "priority": "Low",
+            "expected_score_increase": 2,
+            "recommendation": "Add OpenGraph metadata to control how your pages look when shared on Facebook and LinkedIn."
+        },
+        "twitter_card": {
+            "issue": "Twitter Card missing",
+            "reason": "No twitter:card tags detected.",
+            "business_impact": "Poor link previews when shared on X/Twitter.",
+            "how_to_fix": "Add Twitter Card meta tags to the <head>.",
+            "estimated_time": "10 minutes",
+            "priority": "Low",
+            "expected_score_increase": 2,
+            "recommendation": "Set up Twitter Card tags to ensure rich previews on X (formerly Twitter)."
+        },
+        "llms_txt": {
+            "issue": "llms.txt missing",
+            "reason": "No llms.txt found to guide AI assistants.",
+            "business_impact": "AI tools like ChatGPT may hallucinate or fail to understand the business offerings properly.",
+            "how_to_fix": "Create an llms.txt at the root of the site with essential business facts.",
+            "estimated_time": "15 minutes",
+            "priority": "Low",
+            "expected_score_increase": 3,
+            "recommendation": "Add an llms.txt file at the root of your domain to guide AI crawlers and LLM search agents indexing your business offerings."
+        }
     }
 }
 
+def detect_multiple(patterns: List[str], text: str) -> Tuple[bool, int, str]:
+    """Helper to detect any of the patterns. Returns (found, confidence, matched_pattern)."""
+    text_lower = text.lower()
+    for p in patterns:
+        if p.lower() in text_lower:
+            # 90-99% confidence based on typical match
+            return True, 95, p
+    return False, 0, "None"
+
 async def check_url_status(client: httpx.AsyncClient, base_url: str, path: str) -> bool:
-    """Checks if a specific path (e.g. sitemap.xml) returns a successful response code."""
     parsed = urllib.parse.urlparse(base_url)
     target = f"{parsed.scheme}://{parsed.netloc}/{path.lstrip('/')}"
     try:
-        # Perform a quick GET request with a 15.0s timeout
         response = await client.get(target, timeout=15.0, follow_redirects=True)
         return response.status_code in [200, 301, 302]
     except Exception:
         return False
 
+async def fetch_html_playwright(url: str) -> str:
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            page = await context.new_page()
+            await page.goto(url, wait_until="networkidle", timeout=20000)
+            content = await page.content()
+            await browser.close()
+            return content
+    except Exception as e:
+        print(f"Playwright error: {e}")
+        return ""
+
 async def run_scan(url: str) -> Dict[str, Any]:
-    # Normalize URL
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
 
@@ -70,36 +318,46 @@ async def run_scan(url: str) -> Dict[str, Any]:
     https_detected = url.startswith("https://")
     ssl_valid = False
     
-    # Try fetching with SSL verification first
+    # 1. Standard HTTPX Fetch
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers) as client:
         try:
             response = await client.get(url)
             html_content = response.text
             ssl_valid = https_detected
         except httpx.ConnectTimeout:
-            raise Exception("Website connection timed out. Please check if the site is online.")
+            raise Exception("Website connection timed out.")
         except httpx.ConnectError:
-            raise Exception("Failed to connect to the website. The URL might be invalid or the site is down.")
+            raise Exception("Failed to connect to the website.")
         except httpx.TransportError as e:
-            # Check for SSL validation error
             if "ssl" in str(e).lower() or "certificate" in str(e).lower():
-                # Retry with SSL verification disabled
                 try:
                     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers, verify=False) as client_unverified:
                         response = await client_unverified.get(url)
                         html_content = response.text
-                        ssl_valid = False  # HTTPS works but SSL certificate is invalid
+                        ssl_valid = False 
                 except Exception as inner_e:
-                    raise Exception(f"SSL handshake failed and unverified fallback failed: {str(inner_e)}")
+                    raise Exception(f"SSL handshake failed: {str(inner_e)}")
             else:
                 raise Exception(f"Network error: {str(e)}")
         except Exception as e:
             raise Exception(f"Failed to scan website: {str(e)}")
 
+    # 2. Check if Javascript Rendered SPA (e.g. React, Angular, Vue)
+    # If body has very little content, or typical root div
     soup = BeautifulSoup(html_content, "html.parser")
+    body_text = soup.body.get_text(strip=True) if soup.body else ""
+    is_spa = len(body_text) < 500 or soup.find(id=re.compile("^(root|app|__next)$", re.I))
+    
+    if is_spa:
+        print("Detected SPA, rendering with Playwright...")
+        pw_html = await fetch_html_playwright(url)
+        if pw_html:
+            html_content = pw_html
+            soup = BeautifulSoup(html_content, "html.parser")
+
     text_content = html_content.lower()
 
-    # We also check for auxiliary files asynchronously in parallel
+    # 3. Check for aux files
     async with httpx.AsyncClient(headers=headers, verify=False) as client:
         sitemap_task = check_url_status(client, url, "sitemap.xml")
         robots_task = check_url_status(client, url, "robots.txt")
@@ -108,129 +366,121 @@ async def run_scan(url: str) -> Dict[str, Any]:
             sitemap_task, robots_task, llms_task
         )
 
-    print("Scraper completed")
-    print("Generating analysis")
+    # Helper function to format check result
+    def _cr(found: bool, conf: int, method: str) -> dict:
+        return {"found": found, "confidence": conf, "method": method}
 
-    # 1. MEASUREMENT PILLAR (Max 20 points, 5 checks, 4 pts each)
-    measurement_checks = {
-        "google_analytics": ("google-analytics.com" in text_content or "ga.js" in text_content),
-        "gtm": ("googletagmanager.com" in text_content or "gtm-" in text_content),
-        "clarity": ("clarity.ms" in text_content),
-        "hotjar": ("hotjar" in text_content)
-    }
-    # GA4 check is whether gtag( is found, but also count it as true if we have googleanalytics or gtm
-    measurement_checks["google_analytics"] = measurement_checks["google_analytics"] or "gtag(" in text_content
-    # Let's add clarity / hotjar checks
-    # Calculate score
-    measurement_true_count = sum(1 for v in measurement_checks.values() if v)
-    # Since hotjar and clarity are less common but good, we distribute score:
-    # 5 checks total = GA, GTM, GA4, Clarity, Hotjar
-    # Let's formalize checks exactly as required:
-    # Google Analytics, Google Tag Manager, GA4 Tracking, Hotjar, Microsoft Clarity.
-    m_ga = "google-analytics.com" in text_content or "ga.js" in text_content
-    m_gtm = "googletagmanager.com" in text_content or "gtm-" in text_content
-    m_ga4 = "gtag(" in text_content
-    m_clarity = "clarity.ms" in text_content
-    m_hotjar = "hotjar" in text_content
+    # =========================================================================
+    # MEASUREMENT PILLAR (Max 20 points, 4 checks = 5 points each)
+    # =========================================================================
+    m_ga_found, m_ga_conf, m_ga_meth = detect_multiple(
+        ["gtag(", "googletagmanager.com/gtag", "G-", "UA-", "google-analytics.com", "ga.js"], text_content)
+    
+    m_gtm_found, m_gtm_conf, m_gtm_meth = detect_multiple(
+        ["GTM-", "googletagmanager.com", "dataLayer"], text_content)
+        
+    m_clar_found, m_clar_conf, m_clar_meth = detect_multiple(
+        ["clarity.ms"], text_content)
+        
+    m_hot_found, m_hot_conf, m_hot_meth = detect_multiple(
+        ["static.hotjar.com", "hotjar"], text_content)
 
     measurement_checks = {
-        "google_analytics": m_ga or m_ga4,
-        "gtm": m_gtm,
-        "clarity": m_clarity,
-        "hotjar": m_hotjar
+        "google_analytics": _cr(m_ga_found, m_ga_conf, m_ga_meth),
+        "gtm": _cr(m_gtm_found, m_gtm_conf, m_gtm_meth),
+        "clarity": _cr(m_clar_found, m_clar_conf, m_clar_meth),
+        "hotjar": _cr(m_hot_found, m_hot_conf, m_hot_meth)
     }
-    # Scoring: 4 checks here, let's distribute: GA/GA4, GTM, Clarity, Hotjar. If we have 4 items:
-    # Let's count GA, GTM, Clarity, Hotjar. Let's make it 5 checks by splitting:
-    # google_analytics (GA or GA4), gtm, clarity, hotjar.
-    # To return exactly what's requested:
-    # "google_analytics": true, "gtm": true, "clarity": false, "hotjar": false, "score": 50
-    # Let's use these 4 keys exactly.
-    # If 4 checks, each worth 5 points.
-    measurement_score = sum(5 for v in measurement_checks.values() if v)
+    measurement_score = sum(5 for v in measurement_checks.values() if v["found"])
 
-    # 2. RETARGETING PILLAR (Max 20 points, 3 checks)
-    r_meta = "fbq(" in text_content or "connect.facebook.net" in text_content
-    r_gads = "gtag('config'" in text_content or "googleads" in text_content
-    r_li = "linkedin" in text_content or "linkedin.com/profile.js" in text_content
+    # =========================================================================
+    # RETARGETING PILLAR (Max 20 points, 3 checks = 6.66 points each)
+    # =========================================================================
+    r_meta_found, r_meta_conf, r_meta_meth = detect_multiple(
+        ["fbq(", "connect.facebook.net", "Meta Pixel"], text_content)
+        
+    r_gads_found, r_gads_conf, r_gads_meth = detect_multiple(
+        ["gtag('config'", "googleads", "aw-"], text_content)
+        
+    r_li_found, r_li_conf, r_li_meth = detect_multiple(
+        ["snap.licdn.com", "linkedin.com/profile.js"], text_content)
 
     retargeting_checks = {
-        "meta_pixel": r_meta,
-        "google_ads": r_gads,
-        "linkedin_insight": r_li
+        "meta_pixel": _cr(r_meta_found, r_meta_conf, r_meta_meth),
+        "google_ads": _cr(r_gads_found, r_gads_conf, r_gads_meth),
+        "linkedin_insight": _cr(r_li_found, r_li_conf, r_li_meth)
     }
-    retargeting_score = sum((20.0 / 3.0) for v in retargeting_checks.values() if v)
-    retargeting_score = round(retargeting_score, 1)
+    retargeting_score = sum((20.0 / 3.0) for v in retargeting_checks.values() if v["found"])
 
-    # 3. CONVERSION / CRM PILLAR (Max 20 points, 5 checks, 4 pts each)
-    c_form = "<form" in text_content
-    c_wa = "wa.me" in text_content or "api.whatsapp.com" in text_content
-    c_chat = "tawk.to" in text_content or "intercom" in text_content or "drift" in text_content
-    c_crm = "hubspot" in text_content or "salesforce" in text_content or "zoho" in text_content
+    # =========================================================================
+    # CONVERSION PILLAR (Max 20 points, 5 checks = 4 points each)
+    # =========================================================================
+    c_form_found = bool(soup.find("form") or soup.find("input", type="email"))
+    c_form_meth = "<form> tag" if c_form_found else "None"
     
-    # Popup detection: check script classes or popular widgets
-    c_popup = "popup" in text_content or "modal" in text_content or "lightbox" in text_content
+    c_wa_found, c_wa_conf, c_wa_meth = detect_multiple(
+        ["wa.me", "api.whatsapp.com", "whatsapp://"], text_content)
+        
+    c_chat_found, c_chat_conf, c_chat_meth = detect_multiple(
+        ["tawk.to", "intercom", "zendesk", "crisp", "drift", "livechat"], text_content)
+        
+    c_crm_found, c_crm_conf, c_crm_meth = detect_multiple(
+        ["hubspot", "zoho", "salesforce", "freshworks"], text_content)
+        
+    c_popup_found, c_popup_conf, c_popup_meth = detect_multiple(
+        ["popup", "modal", "lightbox", "optinmonster", "newsletter"], text_content)
 
     conversion_checks = {
-        "contact_form": c_form,
-        "whatsapp": c_wa,
-        "live_chat": c_chat,
-        "crm": c_crm,
-        "lead_popup": c_popup
+        "contact_form": _cr(c_form_found, 90 if c_form_found else 0, c_form_meth),
+        "whatsapp": _cr(c_wa_found, c_wa_conf, c_wa_meth),
+        "live_chat": _cr(c_chat_found, c_chat_conf, c_chat_meth),
+        "crm": _cr(c_crm_found, c_crm_conf, c_crm_meth),
+        "lead_popup": _cr(c_popup_found, 80 if c_popup_found else 0, c_popup_meth)
     }
-    conversion_score = sum(4 for v in conversion_checks.values() if v)
+    conversion_score = sum(4 for v in conversion_checks.values() if v["found"])
 
-    # 4. TRUST & SECURITY PILLAR (Max 20 points, 5 checks, 4 pts each)
-    t_https = https_detected
-    t_ssl = ssl_valid
+    # =========================================================================
+    # TRUST PILLAR (Max 20 points, 5 checks = 4 points each)
+    # =========================================================================
+    nav_links = [a.get('href', '').lower() for a in soup.find_all('a')]
     
-    # Privacy Policy Page
-    t_privacy = any(kw in text_content for kw in ["privacy-policy", "privacy policy", "privacy.html"])
-    # Terms
-    t_terms = any(kw in text_content for kw in ["terms-of-service", "terms and conditions", "terms.html", "terms-and-conditions", "terms/"])
-    # Contact
-    t_contact = any(kw in text_content for kw in ["contact-us", "contact us", "contact.html", "contact/"])
+    t_privacy = any("privacy" in link for link in nav_links)
+    t_terms = any("terms" in link or "conditions" in link for link in nav_links)
+    t_contact = any("contact" in link for link in nav_links)
 
     trust_checks = {
-        "https": t_https,
-        "ssl": t_ssl,
-        "privacy_policy": t_privacy,
-        "terms": t_terms,
-        "contact_page": t_contact
+        "https": _cr(https_detected, 100, "URL Scheme"),
+        "ssl": _cr(ssl_valid, 100, "Certificate Validation"),
+        "privacy_policy": _cr(t_privacy, 95 if t_privacy else 0, "Navigation Link Scan"),
+        "terms": _cr(t_terms, 95 if t_terms else 0, "Navigation Link Scan"),
+        "contact_page": _cr(t_contact, 95 if t_contact else 0, "Navigation Link Scan")
     }
-    trust_score = sum(4 for v in trust_checks.values() if v)
+    trust_score = sum(4 for v in trust_checks.values() if v["found"])
 
-    # 5. DISCOVERY / SEO / AI SEARCH PILLAR (Max 20 points, 8 checks, 2.5 pts each)
+    # =========================================================================
+    # SEO / AI PILLAR (Max 20 points, 8 checks = 2.5 points each)
+    # =========================================================================
     s_title = soup.title is not None and len(soup.title.text.strip()) > 0
-    
-    # Meta Description
-    desc_tag = soup.find("meta", attrs={"name": "description"})
-    if not desc_tag:
-         desc_tag = soup.find("meta", attrs={"name": "Description"})
+    desc_tag = soup.find("meta", attrs={"name": re.compile(r"description", re.I)})
     s_desc = desc_tag is not None and len(desc_tag.get("content", "").strip()) > 0
-
-    s_sitemap = sitemap_exists or "sitemap.xml" in text_content
-    s_robots = robots_exists or "robots.txt" in text_content
-    s_schema = "application/ld+json" in text_content
-    s_og = 'property="og:' in text_content or 'property=\'og:' in text_content
-    s_tw = 'name="twitter:' in text_content or 'name=\'twitter:' in text_content
-    s_llms = llms_exists or "llms.txt" in text_content
+    s_schema = "application/ld+json" in text_content or "schema.org" in text_content
+    s_og = soup.find("meta", property=re.compile(r"og:", re.I)) is not None
+    s_tw = soup.find("meta", attrs={"name": re.compile(r"twitter:", re.I)}) is not None
 
     seo_checks = {
-        "meta_title": s_title,
-        "meta_description": s_desc,
-        "sitemap": s_sitemap,
-        "robots": s_robots,
-        "schema_markup": s_schema,
-        "opengraph": s_og,
-        "twitter_card": s_tw,
-        "llms_txt": s_llms
+        "meta_title": _cr(s_title, 99 if s_title else 0, "<title> tag"),
+        "meta_description": _cr(s_desc, 99 if s_desc else 0, "<meta name='description'>"),
+        "sitemap": _cr(sitemap_exists, 100 if sitemap_exists else 0, "/sitemap.xml HTTP Check"),
+        "robots": _cr(robots_exists, 100 if robots_exists else 0, "/robots.txt HTTP Check"),
+        "schema_markup": _cr(s_schema, 95 if s_schema else 0, "JSON-LD Script or schema.org"),
+        "opengraph": _cr(s_og, 99 if s_og else 0, "og: meta tags"),
+        "twitter_card": _cr(s_tw, 99 if s_tw else 0, "twitter: meta tags"),
+        "llms_txt": _cr(llms_exists, 100 if llms_exists else 0, "/llms.txt HTTP Check")
     }
-    seo_score = sum(2.5 for v in seo_checks.values() if v)
+    seo_score = sum(2.5 for v in seo_checks.values() if v["found"])
 
-    # Compile scores & overall metrics
+    # Compile scores
     overall_score = int(round(measurement_score + retargeting_score + conversion_score + trust_score + seo_score))
-    
-    # Cap at 100 just in case
     overall_score = min(100, max(0, overall_score))
 
     if overall_score >= 90:
@@ -242,9 +492,8 @@ async def run_scan(url: str) -> Dict[str, Any]:
     else:
         grade = "Needs Improvement"
 
-    # Generate recommendations
+    # Generate detailed recommendations
     recommendations = []
-    # Loop over all checks and append message if False
     for pillar, checks in [
         ("measurement", measurement_checks),
         ("retargeting", retargeting_checks),
@@ -252,12 +501,20 @@ async def run_scan(url: str) -> Dict[str, Any]:
         ("trust", trust_checks),
         ("seo_ai", seo_checks)
     ]:
-        for key, val in checks.items():
-            if not val and key in RECOMMENDATION_TEMPLATES[pillar]:
+        for key, result in checks.items():
+            if not result["found"] and key in RECOMMENDATION_TEMPLATES[pillar]:
+                tmpl = RECOMMENDATION_TEMPLATES[pillar][key]
                 recommendations.append({
                     "pillar": pillar,
                     "item": key,
-                    "recommendation": RECOMMENDATION_TEMPLATES[pillar][key]
+                    "issue": tmpl["issue"],
+                    "reason": tmpl["reason"],
+                    "business_impact": tmpl["business_impact"],
+                    "how_to_fix": tmpl["how_to_fix"],
+                    "estimated_time": tmpl["estimated_time"],
+                    "priority": tmpl["priority"],
+                    "expected_score_increase": tmpl["expected_score_increase"],
+                    "recommendation": tmpl["recommendation"]
                 })
 
     return {

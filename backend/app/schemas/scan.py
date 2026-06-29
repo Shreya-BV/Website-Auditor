@@ -9,41 +9,53 @@ class Recommendation(BaseModel):
     pillar: str
     item: str
     recommendation: str
+    issue: Optional[str] = None
+    reason: Optional[str] = None
+    business_impact: Optional[str] = None
+    how_to_fix: Optional[str] = None
+    estimated_time: Optional[str] = None
+    priority: Optional[str] = None
+    expected_score_increase: Optional[int] = None
+
+class CheckResult(BaseModel):
+    found: bool
+    confidence: int
+    method: str
 
 class MeasurementChecks(BaseModel):
-    google_analytics: bool
-    gtm: bool
-    clarity: bool
-    hotjar: bool
+    google_analytics: CheckResult
+    gtm: CheckResult
+    clarity: CheckResult
+    hotjar: CheckResult
 
 class RetargetingChecks(BaseModel):
-    meta_pixel: bool
-    google_ads: bool
-    linkedin_insight: bool
+    meta_pixel: CheckResult
+    google_ads: CheckResult
+    linkedin_insight: CheckResult
 
 class ConversionChecks(BaseModel):
-    contact_form: bool
-    whatsapp: bool
-    live_chat: bool
-    crm: bool
-    lead_popup: bool
+    contact_form: CheckResult
+    whatsapp: CheckResult
+    live_chat: CheckResult
+    crm: CheckResult
+    lead_popup: CheckResult
 
 class TrustChecks(BaseModel):
-    https: bool
-    ssl: bool
-    privacy_policy: bool
-    terms: bool
-    contact_page: bool
+    https: CheckResult
+    ssl: CheckResult
+    privacy_policy: CheckResult
+    terms: CheckResult
+    contact_page: CheckResult
 
 class SeoAiChecks(BaseModel):
-    meta_title: bool
-    meta_description: bool
-    sitemap: bool
-    robots: bool
-    schema_markup: bool
-    opengraph: bool
-    twitter_card: bool
-    llms_txt: bool
+    meta_title: CheckResult
+    meta_description: CheckResult
+    sitemap: CheckResult
+    robots: CheckResult
+    schema_markup: CheckResult
+    opengraph: CheckResult
+    twitter_card: CheckResult
+    llms_txt: CheckResult
 
 class PillarChecks(BaseModel):
     measurement: MeasurementChecks
