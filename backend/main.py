@@ -47,6 +47,8 @@ async def lifespan(app: FastAPI):
     smtp_username = os.environ.get("SMTP_USERNAME")
     smtp_password = os.environ.get("SMTP_PASSWORD")
     from_email = os.environ.get("FROM_EMAIL")
+    jwt_secret = os.environ.get("JWT_SECRET")
+    frontend_url = os.environ.get("FRONTEND_URL")
     
     missing_vars = []
     if not smtp_host: missing_vars.append("SMTP_HOST")
@@ -54,9 +56,11 @@ async def lifespan(app: FastAPI):
     if not smtp_username: missing_vars.append("SMTP_USERNAME")
     if not smtp_password: missing_vars.append("SMTP_PASSWORD")
     if not from_email: missing_vars.append("FROM_EMAIL")
+    if not jwt_secret: missing_vars.append("JWT_SECRET")
+    if not frontend_url: missing_vars.append("FRONTEND_URL")
     
     if missing_vars:
-        error_msg = f"Missing required SMTP configuration variables: {', '.join(missing_vars)}"
+        error_msg = f"Missing required configuration variables: {', '.join(missing_vars)}"
         logger.error(error_msg)
         raise RuntimeError(error_msg)
         
@@ -77,13 +81,21 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Setup allowed origins dynamically
+frontend_url_env = os.environ.get("FRONTEND_URL")
+allowed_origins = [
+    "https://website-auditor-two.vercel.app",
+    "https://website-auditor-amok17kl4-shreya-bvs-projects.vercel.app",
+    "http://localhost:4200",
+    "http://localhost:3000"
+]
+if frontend_url_env and frontend_url_env not in allowed_origins:
+    allowed_origins.append(frontend_url_env)
+
 # CORS Policy configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://website-auditor-two.vercel.app",
-        "http://localhost:4200"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
