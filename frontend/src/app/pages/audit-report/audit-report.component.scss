@@ -388,3 +388,74 @@
 }
 
 .check-meta { font-size: 0.8rem; margin-top: 4px; display: flex; gap: 8px; align-items: center; } .confidence-badge { padding: 2px 6px; border-radius: 4px; font-weight: bold; } .confidence-badge.high { background: rgba(0, 200, 83, 0.2); color: #00c853; } .confidence-badge.low { background: rgba(255, 152, 0, 0.2); color: #ff9800; } .method-text { color: #888; font-style: italic; } .priority-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: bold; } .priority-tag.high { background: rgba(244, 67, 54, 0.2); color: #f44336; } .priority-tag.medium { background: rgba(255, 152, 0, 0.2); color: #ff9800; } .priority-tag.low { background: rgba(33, 150, 243, 0.2); color: #2196f3; } .rec-details-grid { margin-top: 12px; display: grid; gap: 8px; } .rec-detail-block strong { display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 2px; } .rec-detail-block p { font-size: 0.9rem; margin: 0; } .rec-meta-row { display: flex; gap: 12px; margin-top: 8px; } .meta-badge { font-size: 0.8rem; background: rgba(255, 255, 255, 0.1); padding: 4px 8px; border-radius: 4px; }
+
+// Email status styles
+.email-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  
+  .banner-icon { font-size: 1.5rem; }
+  .banner-content { flex: 1; }
+  
+  &.success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: var(--success);
+  }
+  
+  &.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--error);
+  }
+}
+
+.email-details-card {
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border-radius: 12px;
+  
+  h3 {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    align-items: end;
+  }
+  
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .detail-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  
+  .detail-value {
+    font-weight: 600;
+    
+    &.status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      width: fit-content;
+      
+      &.sent { background: var(--success-glow); color: var(--success); }
+      &.failed { background: var(--error-glow); color: var(--error); }
+      &.pending { background: var(--warning-glow); color: var(--warning); }
+    }
+  }
+}

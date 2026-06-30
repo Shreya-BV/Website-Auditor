@@ -32,7 +32,7 @@ export class AuditService {
   }
 
   resendEmail(id: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/audit/send-email/${id}`, {});
+    return this.http.post<any>(`${this.apiUrl}/audit/retry-email/${id}`, {});
   }
 
   downloadAuditPdf(id: string): Observable<Blob> {

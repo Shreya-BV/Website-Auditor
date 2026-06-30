@@ -25,6 +25,11 @@ export class AuditReportComponent implements OnInit {
   leadSubmitted = false;
   leadError = '';
 
+  // Email Retry State
+  isRetryingEmail = false;
+  retryEmailSuccess = false;
+  retryEmailError = '';
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private auditService = inject(AuditService);
@@ -89,6 +94,33 @@ export class AuditReportComponent implements OnInit {
       error: (err) => {
         this.isSubmittingLead = false;
         this.leadError = err.error?.detail || 'Failed to submit details. Please try again.';
+      }
+    });
+  }
+
+  retryEmail() {
+    if (!this.reportId || !this.report) return;
+    this.isRetryingEmail = true;
+    this.retryEmailSuccess = false;
+    this.retryEmailError = '';
+    
+    this.auditService.resendEmail(this.reportId).subscribe({
+      next: (res) => {
+        this.isRetryingEmail = false;
+        if (res.success) {
+          this.retryEmailSuccess = true;
+          if (this.report) {
+            this.report.delivery_status = 'sent';
+            this.report.email_sent = true;
+            this.report.email_sent_at = new Date().toISOString();
+          }
+        } else {
+          this.retryEmailError = res.message || 'Failed to send email on retry.';
+        }
+      },
+      error: (err) => {
+        this.isRetryingEmail = false;
+        this.retryEmailError = err.error?.detail || err.error?.message || 'Failed to retry email delivery. Please try again later.';
       }
     });
   }

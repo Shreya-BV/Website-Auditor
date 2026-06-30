@@ -65,6 +65,8 @@ export interface AuditReport {
   pdf_path?: string;
   pdf_url?: string;
   email_sent: boolean;
+  email_sent_at?: string;
+  delivery_status?: string;
   created_at: string;
   updated_at: string;
 }

@@ -31,6 +31,74 @@
         <p class="timestamp-text">Scanned on {{ report.created_at ? (report.created_at | date:'medium') : 'Not Available' }}</p>
       </div>
 
+      <!-- Email Delivery Status Banner -->
+      @if (report.email && (report.delivery_status === 'sent' || retryEmailSuccess)) {
+        <div class="email-banner success glass-card">
+          <span class="banner-icon">📧</span>
+          <div class="banner-content">
+            <strong>Success!</strong> Your report has been generated and emailed successfully.
+          </div>
+        </div>
+      } @else if (report.email && report.delivery_status === 'failed') {
+        <div class="email-banner error glass-card">
+          <span class="banner-icon">⚠️</span>
+          <div class="banner-content">
+            <strong>Notice:</strong> Report generated successfully, but email delivery failed.
+          </div>
+          <div class="banner-actions">
+            <button class="btn-primary retry-btn" (click)="retryEmail()" [disabled]="isRetryingEmail">
+              @if (isRetryingEmail) {
+                <span>Retrying...</span>
+              } @else {
+                <span>Retry Email</span>
+              }
+            </button>
+          </div>
+        </div>
+      }
+      @if (retryEmailError) {
+        <div class="email-banner error glass-card">
+          <span class="banner-icon">⚠️</span>
+          <div class="banner-content">
+            {{ retryEmailError }}
+          </div>
+        </div>
+      }
+
+      <!-- Email Delivery Details (if applicable) -->
+      @if (report.email) {
+        <div class="email-details-card glass-card">
+          <h3>Email Delivery Status</h3>
+          <div class="details-grid">
+            <div class="detail-item">
+              <span class="detail-label">Recipient Email</span>
+              <span class="detail-value">{{ report.email }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Email Status</span>
+              <span class="detail-value status-badge" [ngClass]="report.delivery_status || 'pending'">
+                {{ report.delivery_status || 'Pending' | titlecase }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Email Sent Time</span>
+              <span class="detail-value">
+                {{ report.email_sent_at ? (report.email_sent_at | date:'medium') : 'Not Sent' }}
+              </span>
+            </div>
+            <div class="detail-actions">
+               <button class="btn-secondary" (click)="retryEmail()" [disabled]="isRetryingEmail || report.delivery_status === 'sent'">
+                 @if (isRetryingEmail) {
+                   <span>Retrying...</span>
+                 } @else {
+                   <span>Retry Email</span>
+                 }
+               </button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Core Summary Row (Score + Lead Capture Side-by-Side) -->
       <div class="summary-grid">
         <!-- Circular Score Card -->

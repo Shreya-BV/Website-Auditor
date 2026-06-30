@@ -69,6 +69,9 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     # Send email
     user_email = report_dict.get("email")
     if user_email:
+        if DEBUG_REPORT_FLOW:
+            print(f"[DEBUG_REPORT_FLOW] Queuing Email for {user_email}")
+            
         email_success = await send_audit_email(
             to_email=user_email,
             user_name=report_dict.get("user_name", "User"),
@@ -76,12 +79,41 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
             audit_score=report_dict.get("audit_score"),
             pdf_path=pdf_path
         )
+        
+        delivery_status = "sent" if email_success else "failed"
+        sent_at = datetime.now(timezone.utc) if email_success else None
+        
         if DEBUG_REPORT_FLOW:
-            print(f"[DEBUG_REPORT_FLOW] Email Sent to {user_email}: {email_success}")
+            print(f"[DEBUG_REPORT_FLOW] Email Delivery Status to {user_email}: {delivery_status}")
+            
+        email_delivery_record = {
+            "audit_id": inserted_id,
+            "user_id": report_dict.get("user_id"),
+            "user_email": user_email,
+            "website_url": report_dict.get("website_url"),
+            "subject": f"Website Audit Report – {report_dict.get('website_url')}",
+            "pdf_filename": pdf_filename,
+            "email_provider": "SMTP_GMAIL",
+            "delivery_status": delivery_status,
+            "retry_count": 0,
+            "sent_at": sent_at,
+            "failure_reason": None if email_success else "SMTP Delivery Failed",
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db["email_delivery"].insert_one(email_delivery_record)
+        
         report_dict["email_sent"] = email_success
+        report_dict["email_sent_at"] = sent_at
+        report_dict["delivery_status"] = delivery_status
+        
         await db["audit_reports"].update_one(
             {"_id": ObjectId(inserted_id)},
-            {"$set": {"email_sent": email_success}}
+            {"$set": {
+                "email_sent": email_success,
+                "email_sent_at": sent_at,
+                "delivery_status": delivery_status
+            }}
         )
         
     return report_dict
@@ -152,8 +184,8 @@ async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_us
         print(f"[DEBUG_REPORT_FLOW] Download Response Sent for filename: {download_filename}")
     return FileResponse(pdf_path, media_type="application/pdf", filename=download_filename)
 
-@router.post("/send-email/{audit_id}")
-async def resend_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
+@router.post("/retry-email/{audit_id}")
+async def retry_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
     except Exception:
@@ -162,6 +194,9 @@ async def resend_audit_email(audit_id: str, db=Depends(get_database), current_us
     report = await db["audit_reports"].find_one({"_id": oid})
     if not report:
         raise HTTPException(status_code=404, detail="Audit report not found.")
+        
+    if report.get("user_id") != str(current_user["_id"]):
+        raise HTTPException(status_code=403, detail="Not authorized to retry this email.")
         
     user_email = report.get("email")
     if not user_email:
@@ -179,15 +214,54 @@ async def resend_audit_email(audit_id: str, db=Depends(get_database), current_us
         pdf_path=pdf_path
     )
     
+    delivery_status = "sent" if email_success else "failed"
+    sent_at = datetime.now(timezone.utc) if email_success else None
+    
+    await db["email_delivery"].update_one(
+        {"audit_id": audit_id},
+        {
+            "$inc": {"retry_count": 1},
+            "$set": {
+                "delivery_status": delivery_status,
+                "sent_at": sent_at,
+                "failure_reason": None if email_success else "Retry Failed"
+            }
+        }
+    )
+    
     await db["audit_reports"].update_one(
         {"_id": oid},
-        {"$set": {"email_sent": email_success}}
+        {"$set": {
+            "email_sent": email_success,
+            "email_sent_at": sent_at,
+            "delivery_status": delivery_status
+        }}
     )
     
     if not email_success:
-        return {"success": False, "message": "Failed to send email."}
+        return {"success": False, "message": "Failed to send email on retry."}
     
-    return {"success": True, "message": "Email sent successfully."}
+    return {"success": True, "message": "Email sent successfully on retry."}
+
+@router.get("/email-status/{audit_id}")
+async def get_email_status(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
+    try:
+        oid = ObjectId(audit_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid audit ID format.")
+        
+    report = await db["audit_reports"].find_one({"_id": oid})
+    if not report:
+        raise HTTPException(status_code=404, detail="Audit report not found.")
+        
+    if report.get("user_id") != str(current_user["_id"]):
+        raise HTTPException(status_code=403, detail="Not authorized to view this email status.")
+        
+    delivery_record = await db["email_delivery"].find_one({"audit_id": audit_id})
+    if not delivery_record:
+        return {"delivery_status": report.get("delivery_status", "unknown")}
+        
+    return serialize_doc(delivery_record)
 
 @router.delete("/{audit_id}")
 async def delete_audit_report(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):

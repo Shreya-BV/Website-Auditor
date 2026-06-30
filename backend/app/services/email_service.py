@@ -14,7 +14,7 @@ async def send_audit_email(to_email: str, user_name: str, website_url: str, audi
     """
     smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER")
+    smtp_user = os.environ.get("SMTP_USERNAME")
     smtp_pass = os.environ.get("SMTP_PASSWORD")
 
     if not smtp_user or not smtp_pass:
@@ -22,23 +22,35 @@ async def send_audit_email(to_email: str, user_name: str, website_url: str, audi
         logger.info(f"MOCK EMAIL: Would send {pdf_path} to {to_email} for {website_url} with score {audit_score}")
         return False
 
+    from_email = os.environ.get("FROM_EMAIL", smtp_user)
+
     msg = EmailMessage()
-    msg['Subject'] = 'Website Audit Report'
-    msg['From'] = smtp_user
+    msg['Subject'] = f'Website Audit Report – {website_url}'
+    msg['From'] = from_email
     msg['To'] = to_email
 
-    body = f"""Thank you for using Website Auditor.
+    body = f"""Hello {user_name},
 
-Hello {user_name},
+Thank you for using Website Auditor.
 
-Your comprehensive website audit for {website_url} is complete. 
-Your overall audit score is: {audit_score}/100.
+Your website audit has been completed successfully.
 
-Please find your detailed website audit report attached.
+The professional audit report is attached.
+
+The report includes:
+Overall Website Score
+Five Pillars
+Business Impact
+Recommendations
+Priority Issues
+Technology Detection
+Improvement Roadmap
+
+If you need assistance implementing the recommendations, please contact us.
 
 Regards,
-Website Auditor Team
-"""
+
+Website Auditor Team"""
     msg.set_content(body)
 
     # Attach the PDF
@@ -55,13 +67,14 @@ Website Auditor Team
 
     for attempt in range(1, max_retries + 1):
         try:
-            logger.info(f"Attempting to send email to {to_email} (Attempt {attempt}/{max_retries})")
+            logger.info(f"[EMAIL SERVICE] Attempting to send email to {to_email} (Attempt {attempt}/{max_retries})")
             server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
             server.starttls()
+            logger.info(f"[EMAIL SERVICE] SMTP Connected to {smtp_host}:{smtp_port}")
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
             server.quit()
-            logger.info(f"Email successfully sent to {to_email}")
+            logger.info(f"[EMAIL SERVICE] Email successfully sent to {to_email}")
             return True
         except Exception as e:
             logger.error(f"Email delivery failed on attempt {attempt}: {e}")
