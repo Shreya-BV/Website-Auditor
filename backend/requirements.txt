@@ -8,3 +8,5 @@ dnspython
 reportlab
 python-dotenv
 playwright
+passlib[bcrypt]
+pyjwt

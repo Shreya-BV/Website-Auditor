@@ -9,6 +9,7 @@ from app.database.mongodb import get_database
 from app.schemas.audit_report import AuditReport
 from app.services.pdf_generator import generate_audit_pdf
 from app.services.email_service import send_audit_email
+from app.routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -26,6 +27,23 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     result = await db["audit_reports"].insert_one(report_dict)
     inserted_id = str(result.inserted_id)
     report_dict["_id"] = inserted_id
+    
+    # Store history log
+    category_scores = report_dict.get("category_scores", {})
+    audit_history_record = {
+        "user_id": report_dict.get("user_id"),
+        "email": report_dict.get("email"),
+        "website_url": report_dict.get("website_url"),
+        "audit_score": report_dict.get("audit_score", 0),
+        "measurement_score": category_scores.get("Measurement", 0),
+        "retargeting_score": category_scores.get("Retargeting", 0),
+        "conversion_score": category_scores.get("Conversion", 0),
+        "trust_score": category_scores.get("Trust", 0),
+        "seo_score": category_scores.get("SEO/AI", 0),
+        "scan_timestamp": report_dict.get("created_at"),
+        "report_id": inserted_id
+    }
+    await db["audit_history"].insert_one(audit_history_record)
     
     # Generate PDF
     pdf_dir = os.path.join(os.getcwd(), "reports")
@@ -62,20 +80,23 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     return report_dict
 
 @router.post("/create", response_model=AuditReport)
-async def create_audit_report(payload: AuditReport, db=Depends(get_database)):
+async def create_audit_report(payload: AuditReport, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     report_dict = payload.dict(by_alias=True, exclude_none=True)
+    report_dict["user_id"] = str(current_user["_id"])
+    report_dict["user_name"] = current_user.get("full_name", "")
     report_dict = await process_audit_workflow(report_dict, db)
     return serialize_doc(report_dict)
 
 
 @router.get("/history", response_model=List[AuditReport])
-async def get_audit_history(db=Depends(get_database)):
-    cursor = db["audit_reports"].find().sort("created_at", -1)
+async def get_audit_history(db=Depends(get_database), current_user: dict = Depends(get_current_user)):
+    # Filter by user_id
+    cursor = db["audit_reports"].find({"user_id": str(current_user["_id"])}).sort("created_at", -1)
     reports = await cursor.to_list(length=100)
     return [serialize_doc(r) for r in reports]
 
 @router.get("/{audit_id}", response_model=AuditReport)
-async def get_audit_report(audit_id: str, db=Depends(get_database)):
+async def get_audit_report(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
     except Exception:
@@ -88,7 +109,7 @@ async def get_audit_report(audit_id: str, db=Depends(get_database)):
     return serialize_doc(report)
 
 @router.get("/download/{audit_id}")
-async def download_audit_pdf(audit_id: str, db=Depends(get_database)):
+async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
     except Exception:
@@ -105,7 +126,7 @@ async def download_audit_pdf(audit_id: str, db=Depends(get_database)):
     return FileResponse(pdf_path, media_type="application/pdf", filename=os.path.basename(pdf_path))
 
 @router.post("/send-email/{audit_id}")
-async def resend_audit_email(audit_id: str, db=Depends(get_database)):
+async def resend_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
     except Exception:
@@ -139,7 +160,7 @@ async def resend_audit_email(audit_id: str, db=Depends(get_database)):
     return {"success": True, "message": "Email sent successfully."}
 
 @router.delete("/{audit_id}")
-async def delete_audit_report(audit_id: str, db=Depends(get_database)):
+async def delete_audit_report(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
     except Exception:

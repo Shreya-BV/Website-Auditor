@@ -1,0 +1,70 @@
+<div class="auth-container">
+  <div class="auth-card glass-card">
+    <div class="brand-header">
+      <div class="logo">
+        <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 0 24 24" width="40px" fill="url(#grad1)">
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <path d="M0 0h24v24H0V0z" fill="none"/>
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+        </svg>
+      </div>
+      <h2>Welcome Back</h2>
+      <p>Sign in to continue to Website Auditor</p>
+    </div>
+
+    @if (errorMessage) {
+      <div class="error-alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ errorMessage }}</span>
+      </div>
+    }
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="auth-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email Address</mat-label>
+        <input matInput formControlName="email" type="email" placeholder="john@example.com" autocomplete="email">
+        <mat-icon matPrefix>email</mat-icon>
+        @if (loginForm.get('email')?.hasError('required') && loginForm.get('email')?.touched) {
+          <mat-error>Email is required</mat-error>
+        }
+        @if (loginForm.get('email')?.hasError('email') && loginForm.get('email')?.touched) {
+          <mat-error>Please enter a valid email address</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="current-password">
+        <mat-icon matPrefix>lock</mat-icon>
+        <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hidePassword">
+          <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+        </button>
+        @if (loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched) {
+          <mat-error>Password is required</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="form-actions">
+        <mat-checkbox formControlName="rememberMe" color="primary">Remember me</mat-checkbox>
+        <a routerLink="/forgot-password" class="forgot-password">Forgot password?</a>
+      </div>
+
+      <button mat-raised-button color="primary" type="submit" class="submit-btn" [disabled]="loginForm.invalid || isLoading">
+        @if (isLoading) {
+          <span class="btn-content"><span class="spinner"></span> Signing in...</span>
+        } @else {
+          <span class="btn-content">Sign In</span>
+        }
+      </button>
+
+      <div class="auth-footer">
+        <p>Don't have an account? <a routerLink="/register">Sign Up</a></p>
+      </div>
+    </form>
+  </div>
+</div>

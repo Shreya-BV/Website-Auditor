@@ -1,0 +1,194 @@
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 80px);
+  padding: 2rem;
+  background: var(--bg-default);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 450px;
+  padding: 3rem 2.5rem;
+  border-radius: 20px;
+  
+  .brand-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: var(--bg-paper);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-light);
+    }
+    
+    h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 0.5rem 0;
+      letter-spacing: -0.5px;
+    }
+    
+    p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0;
+    }
+  }
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  
+  .full-width {
+    width: 100%;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  
+  .forgot-password {
+    color: var(--primary-main);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: var(--primary-light);
+    }
+  }
+}
+
+.submit-btn {
+  height: 52px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-main), var(--accent-main));
+  box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+  transition: all 0.3s ease;
+  
+  &:not([disabled]):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px -5px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.auth-footer {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  
+  a {
+    color: var(--accent-main);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: var(--accent-light);
+      text-decoration: underline;
+    }
+  }
+}
+
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  color: #ef4444;
+  margin-bottom: 1.5rem;
+  
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  
+  span {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+}
+
+/* Material overrides for dark theme alignment */
+::ng-deep {
+  .mat-mdc-text-field-wrapper {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-radius: 12px !important;
+  }
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__leading,
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__notch,
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-notched-outline__trailing {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled):not(.mdc-text-field--focused):hover .mdc-notched-outline .mdc-notched-outline__leading,
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled):not(.mdc-text-field--focused):hover .mdc-notched-outline .mdc-notched-outline__notch,
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled):not(.mdc-text-field--focused):hover .mdc-notched-outline .mdc-notched-outline__trailing {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  /* Fix for clipped icons */
+  .mat-mdc-form-field-icon-prefix,
+  .mat-mdc-form-field-icon-suffix {
+    padding: 0 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+    align-self: center !important;
+  }
+
+  .mat-mdc-form-field-flex {
+    align-items: center !important;
+  }
+  
+  .mdc-icon-button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

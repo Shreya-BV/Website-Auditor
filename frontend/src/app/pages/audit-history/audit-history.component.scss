@@ -110,6 +110,21 @@
   font-size: 0.9rem;
 }
 
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  
+  .user-name {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  
+  .user-email {
+    font-size: 0.8rem;
+  }
+}
+
 .score-badge {
   display: inline-flex;
   align-items: center;

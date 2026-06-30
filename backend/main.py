@@ -1,4 +1,10 @@
 import os
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import uvicorn
 from dotenv import load_dotenv
 
@@ -16,6 +22,7 @@ logger = logging.getLogger(__name__)
 from app.database.mongodb import connect_db, close_db
 from app.routes.api import router as api_router
 from app.routes.audit import router as audit_router
+from app.routes.auth import router as auth_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup database connection
@@ -54,9 +61,10 @@ async def log_requests(request: Request, call_next):
 # Mount API routers
 app.include_router(api_router, prefix="/api")
 app.include_router(audit_router, prefix="/api/audit")
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Website Auditor API. The service is running."}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

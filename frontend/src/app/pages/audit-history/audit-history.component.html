@@ -35,6 +35,7 @@
             <thead>
               <tr>
                 <th>Website</th>
+                <th>User</th>
                 <th>Date</th>
                 <th>Score</th>
                 <th>Issues</th>
@@ -46,6 +47,12 @@
               @for (report of reports; track report._id || report.id) {
                 <tr class="table-row">
                   <td class="font-medium">{{ report.website_url }}</td>
+                  <td>
+                    <div class="user-info">
+                      <span class="user-name">{{ report.user_name || 'N/A' }}</span>
+                      <small class="user-email text-muted">{{ report.email || 'N/A' }}</small>
+                    </div>
+                  </td>
                   <td class="text-muted">{{ report.created_at | date:'medium' }}</td>
                   <td>
                     <span class="score-badge" [ngClass]="getScoreColorClass(report.audit_score)">

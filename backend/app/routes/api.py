@@ -14,6 +14,7 @@ from app.schemas.lead import LeadCreate, Lead
 from app.schemas.dashboard import DashboardStats, DailyCount
 from app.scanners.engine import run_scan
 from app.routes.audit import process_audit_workflow
+from app.routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -30,6 +31,7 @@ import traceback
 
 @router.post("/scan", response_model=AuditReportResponse)
 async def scan_website(payload: ScanRequest, db=Depends(get_database)):
+    current_user = {"_id": "test_id", "full_name": "Test User"}
     print("Scan request received")
     print("Website URL:", payload.url)
     logger.info(f"Received scan request for URL: {payload.url}")
@@ -66,6 +68,8 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
             
         audit_report_dict = {
             "website_url": report["url"],
+            "user_id": str(current_user["_id"]),
+            "user_name": current_user["full_name"],
             "scan_type": "Full Audit",
             "audit_score": report["overall_score"],
             "category_scores": report["pillar_scores"],
@@ -86,7 +90,7 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/scan/{scan_id}", response_model=AuditReportResponse)
-async def get_scan_report(scan_id: str, db=Depends(get_database)):
+async def get_scan_report(scan_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(scan_id)
     except Exception:
@@ -156,7 +160,7 @@ async def delete_lead(lead_id: str, db=Depends(get_database)):
     return {"success": True, "message": "Lead deleted successfully."}
 
 @router.get("/dashboard/stats", response_model=DashboardStats)
-async def get_dashboard_stats(db=Depends(get_database)):
+async def get_dashboard_stats(db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     # Get total counts
     total_visitors = await db["visitor_logs"].count_documents({})
     total_scans = await db["scans"].count_documents({})
@@ -214,13 +218,13 @@ async def get_dashboard_stats(db=Depends(get_database)):
     )
 
 @router.get("/dashboard/leads", response_model=List[Lead])
-async def get_all_leads(db=Depends(get_database)):
+async def get_all_leads(db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     leads_cursor = db["leads"].find().sort("created_at", -1)
     leads = await leads_cursor.to_list(length=500)
     return serialize_list(leads)
 
 @router.get("/dashboard/visitors", response_model=List[VisitorLog])
-async def get_recent_visitors(db=Depends(get_database)):
+async def get_recent_visitors(db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     visitors_cursor = db["visitor_logs"].find().sort("created_at", -1).limit(100)
     visitors = await visitors_cursor.to_list(length=100)
     return serialize_list(visitors)

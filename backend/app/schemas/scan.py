@@ -82,6 +82,7 @@ class PillarScores(BaseModel):
 
 class AuditReportResponse(BaseModel):
     id: Optional[str] = Field(None, alias="_id")
+    user_id: Optional[str] = None
     url: str
     overall_score: int
     grade: str
