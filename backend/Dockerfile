@@ -8,8 +8,11 @@ WORKDIR /app
 # Copy the requirements file
 COPY requirements.txt .
 
-# Install Python dependencies (including FastAPI, Motor, etc.)
-RUN pip install --no-cache-dir -r requirements.txt
+# Ensure pip is installed natively
+RUN apt-get update && apt-get install -y python3-pip
+
+# Install Python dependencies using pip3
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # The base image already has browsers installed, but to be absolutely sure
 # we match the python package version to the browser version:
