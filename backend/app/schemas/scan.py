@@ -21,6 +21,7 @@ class CheckResult(BaseModel):
     found: bool
     confidence: int
     method: str
+    evidence: Optional[str] = None
 
 class MeasurementChecks(BaseModel):
     google_analytics: CheckResult
@@ -32,22 +33,29 @@ class RetargetingChecks(BaseModel):
     meta_pixel: CheckResult
     google_ads: CheckResult
     linkedin_insight: CheckResult
+    tiktok_pixel: CheckResult
+    pinterest_pixel: CheckResult
 
 class ConversionChecks(BaseModel):
     contact_form: CheckResult
+    newsletter_form: CheckResult
     whatsapp: CheckResult
+    messenger: CheckResult
     live_chat: CheckResult
+    calendly: CheckResult
     crm: CheckResult
-    lead_popup: CheckResult
 
 class TrustChecks(BaseModel):
     https: CheckResult
     ssl: CheckResult
+    cookies: CheckResult
     privacy_policy: CheckResult
     terms: CheckResult
     contact_page: CheckResult
+    accessibility: CheckResult
 
 class SeoAiChecks(BaseModel):
+    canonical_url: CheckResult
     meta_title: CheckResult
     meta_description: CheckResult
     sitemap: CheckResult
@@ -56,6 +64,7 @@ class SeoAiChecks(BaseModel):
     opengraph: CheckResult
     twitter_card: CheckResult
     llms_txt: CheckResult
+    security_headers: CheckResult
 
 class PillarChecks(BaseModel):
     measurement: MeasurementChecks

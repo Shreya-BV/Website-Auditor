@@ -15,6 +15,7 @@ export interface CheckResult {
   found: boolean;
   confidence: number;
   method: string;
+  evidence?: string;
 }
 
 export interface AuditReport {
@@ -41,22 +42,29 @@ export interface AuditReport {
       meta_pixel: CheckResult;
       google_ads: CheckResult;
       linkedin_insight: CheckResult;
+      tiktok_pixel: CheckResult;
+      pinterest_pixel: CheckResult;
     };
     conversion: {
       contact_form: CheckResult;
+      newsletter_form: CheckResult;
       whatsapp: CheckResult;
+      messenger: CheckResult;
       live_chat: CheckResult;
+      calendly: CheckResult;
       crm: CheckResult;
-      lead_popup: CheckResult;
     };
     trust: {
       https: CheckResult;
       ssl: CheckResult;
+      cookies: CheckResult;
       privacy_policy: CheckResult;
       terms: CheckResult;
       contact_page: CheckResult;
+      accessibility: CheckResult;
     };
     seo_ai: {
+      canonical_url: CheckResult;
       meta_title: CheckResult;
       meta_description: CheckResult;
       sitemap: CheckResult;
@@ -65,6 +73,7 @@ export interface AuditReport {
       opengraph: CheckResult;
       twitter_card: CheckResult;
       llms_txt: CheckResult;
+      security_headers: CheckResult;
     };
   };
   recommendations: Recommendation[];
