@@ -62,8 +62,14 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
                 "category": r.get("pillar", "General"),
                 "title": r.get("item", "Issue"),
                 "description": r.get("recommendation", ""),
-                "priority": "High" if report.get("overall_score", 100) < 50 else "Medium",
-                "status": "Open"
+                "priority": r.get("priority", "High" if report.get("overall_score", 100) < 50 else "Medium"),
+                "status": "Open",
+                "current_problem": r.get("issue", ""),
+                "business_impact": r.get("business_impact", ""),
+                "technical_explanation": r.get("reason", ""),
+                "implementation_steps": r.get("how_to_fix", ""),
+                "estimated_time": r.get("estimated_time", ""),
+                "expected_score_improvement": r.get("expected_score_increase", 0)
             })
             
         audit_report_dict = {
@@ -71,10 +77,14 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
             "user_id": str(current_user["_id"]),
             "user_name": current_user["full_name"],
             "scan_type": "Full Audit",
-            "audit_score": report["overall_score"],
-            "category_scores": report["pillar_scores"],
+            "audit_score": report.get("overall_score", 0),
+            "grade": report.get("grade", "C"),
+            "category_scores": report.get("pillar_scores", {}),
+            "pillar_details": report.get("pillar_details", {}),
             "recommendations": mapped_recs,
             "issues_found": len(mapped_recs),
+            "technology_detections": report.get("technology_detections", []),
+            "performance_metrics": report.get("performance_metrics", {}),
             "scan_status": "Completed"
         }
         

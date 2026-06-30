@@ -19,7 +19,11 @@ def serialize_doc(doc):
     doc["_id"] = str(doc["_id"])
     return doc
 
+DEBUG_REPORT_FLOW = os.environ.get("DEBUG_REPORT_FLOW", "False").lower() == "true"
+
 async def process_audit_workflow(report_dict: dict, db) -> dict:
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] Starting workflow for URL: {report_dict.get('website_url')}")
     report_dict["created_at"] = datetime.now(timezone.utc)
     report_dict["updated_at"] = datetime.now(timezone.utc)
     
@@ -45,6 +49,9 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     }
     await db["audit_history"].insert_one(audit_history_record)
     
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] PDF Generation Started for Report ID: {inserted_id}")
+    
     # Generate PDF
     pdf_dir = os.path.join(os.getcwd(), "reports")
     os.makedirs(pdf_dir, exist_ok=True)
@@ -53,12 +60,25 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     
     generate_audit_pdf(report_dict, pdf_path)
     
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] PDF Saved to Path: {pdf_path}")
+        print(f"[DEBUG_REPORT_FLOW] File Exists: {os.path.exists(pdf_path)}")
+    
     # Update PDF path in DB
     report_dict["pdf_path"] = pdf_path
+    report_dict["pdf_filename"] = pdf_filename
+    report_dict["pdf_generated"] = True
+    report_dict["download_count"] = 0
     report_dict["pdf_url"] = f"/api/audit/download/{inserted_id}"
     await db["audit_reports"].update_one(
         {"_id": ObjectId(inserted_id)}, 
-        {"$set": {"pdf_path": pdf_path, "pdf_url": report_dict["pdf_url"]}}
+        {"$set": {
+            "pdf_path": pdf_path,
+            "pdf_filename": pdf_filename,
+            "pdf_generated": True,
+            "download_count": 0,
+            "pdf_url": report_dict["pdf_url"]
+        }}
     )
     
     # Send email
@@ -71,6 +91,8 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
             audit_score=report_dict.get("audit_score"),
             pdf_path=pdf_path
         )
+        if DEBUG_REPORT_FLOW:
+            print(f"[DEBUG_REPORT_FLOW] Email Sent to {user_email}: {email_success}")
         report_dict["email_sent"] = email_success
         await db["audit_reports"].update_one(
             {"_id": ObjectId(inserted_id)},
@@ -110,24 +132,39 @@ async def get_audit_report(audit_id: str, db=Depends(get_database), current_user
 
 @router.get("/download/{audit_id}")
 async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] Download Request Received for Audit ID: {audit_id} by User: {current_user.get('email')}")
     try:
         oid = ObjectId(audit_id)
     except Exception:
+        if DEBUG_REPORT_FLOW:
+            print("[DEBUG_REPORT_FLOW] Invalid audit ID format.")
         raise HTTPException(status_code=400, detail="Invalid audit ID format.")
         
     report = await db["audit_reports"].find_one({"_id": oid})
     if not report or not report.get("pdf_path"):
+        if DEBUG_REPORT_FLOW:
+            print(f"[DEBUG_REPORT_FLOW] PDF not found in DB for ID: {audit_id}")
         raise HTTPException(status_code=404, detail="PDF not found.")
         
     pdf_path = report["pdf_path"]
+    
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] File Exists Check for {pdf_path}: {os.path.exists(pdf_path)}")
+        
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF file missing from server.")
+        
+    # Increment download count
+    await db["audit_reports"].update_one({"_id": oid}, {"$inc": {"download_count": 1}})
         
     website_url = report.get("website_url", "unknown")
     clean_url = website_url.replace("https://", "").replace("http://", "").replace("www.", "").replace(".", "-").replace("/", "").strip("-")
     date_str = report.get("created_at", datetime.now(timezone.utc)).strftime("%Y-%m-%d") if isinstance(report.get("created_at"), datetime) else datetime.now(timezone.utc).strftime("%Y-%m-%d")
     download_filename = f"website-audit-{clean_url}-{date_str}.pdf"
         
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] Download Response Sent for filename: {download_filename}")
     return FileResponse(pdf_path, media_type="application/pdf", filename=download_filename)
 
 @router.post("/send-email/{audit_id}")

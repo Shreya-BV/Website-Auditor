@@ -50,6 +50,10 @@ def generate_audit_pdf(report_data: dict, output_path: str):
     """
     Generate a highly professional enterprise PDF report for the website audit using reportlab.
     """
+    DEBUG_REPORT_FLOW = os.environ.get("DEBUG_REPORT_FLOW", "False").lower() == "true"
+    if DEBUG_REPORT_FLOW:
+        print(f"[DEBUG_REPORT_FLOW] Collecting Audit Data for PDF. Website: {report_data.get('website_url')}")
+        
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     website_url = report_data.get("website_url", "N/A")
@@ -281,6 +285,13 @@ def generate_audit_pdf(report_data: dict, output_path: str):
         conclusion_text += "This indicates low digital maturity. Urgent attention is required on critical and high-priority recommendations to avoid severe negative impacts on traffic and conversions."
     elements.append(Paragraph(conclusion_text, normal_style))
     
+    if DEBUG_REPORT_FLOW:
+        print("[DEBUG_REPORT_FLOW] Generating and Saving PDF...")
+        
     # Build the PDF
     doc.build(elements)
+    
+    if DEBUG_REPORT_FLOW:
+        print("[DEBUG_REPORT_FLOW] PDF Generation Complete.")
+        
     return output_path

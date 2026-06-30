@@ -15,6 +15,7 @@ export class AuditHistoryComponent implements OnInit {
   reports: any[] = [];
   isLoading = true;
   errorMessage = '';
+  downloadingReportId: string | null = null;
 
   private auditService = inject(AuditService);
 
@@ -37,9 +38,33 @@ export class AuditHistoryComponent implements OnInit {
     });
   }
 
-  downloadPdf(reportId: string, event: Event) {
+  downloadPdf(reportId: string, report: any, event: Event) {
     event.stopPropagation();
-    window.open(`${environment.apiUrl}/audit/download/${reportId}`, '_blank');
+    if (this.downloadingReportId) return;
+    this.downloadingReportId = reportId;
+
+    this.auditService.downloadAuditPdf(reportId).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const cleanUrl = report.website_url.replace(/https?:\/\//, '').replace(/^www\./, '').replace(/\./g, '-').replace(/\//g, '');
+        const dateStr = new Date(report.created_at).toISOString().split('T')[0];
+        a.download = `website-audit-${cleanUrl}-${dateStr}.pdf`;
+        
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        this.downloadingReportId = null;
+      },
+      error: (err) => {
+        console.error('Failed to download PDF', err);
+        alert('Failed to download PDF report. It may not exist.');
+        this.downloadingReportId = null;
+      }
+    });
   }
 
   deleteReport(reportId: string, event: Event) {

@@ -67,8 +67,9 @@
                   </td>
                   <td class="actions-col">
                     <div class="action-buttons">
-                      <button *ngIf="report.pdf_path" (click)="downloadPdf(report._id || report.id, $event)" class="btn-icon" title="Download Report">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                      <button *ngIf="report.pdf_path" (click)="downloadPdf(report._id || report.id, report, $event)" [disabled]="downloadingReportId === (report._id || report.id)" class="btn-icon" title="Download Report">
+                        <svg *ngIf="downloadingReportId !== (report._id || report.id)" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        <span *ngIf="downloadingReportId === (report._id || report.id)" style="font-size:12px;">⏳</span>
                       </button>
                       <button (click)="deleteReport(report._id || report.id, $event)" class="btn-icon delete" title="Delete Report">
                         <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
