@@ -1,2 +1,0 @@
-[phases.install]
-cmds = ["...", "playwright install chromium", "playwright install-deps"]
