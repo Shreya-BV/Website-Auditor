@@ -34,4 +34,8 @@ export class AuditService {
   resendEmail(id: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/audit/send-email/${id}`, {});
   }
+
+  downloadAuditPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/audit/download/${id}`, { responseType: 'blob' });
+  }
 }

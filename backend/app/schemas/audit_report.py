@@ -6,8 +6,39 @@ class ReportRecommendation(BaseModel):
     category: str
     title: str
     description: str
-    priority: str
+    priority: str  # Critical, High, Medium, Low
     status: str = "Open"
+    current_problem: Optional[str] = None
+    business_impact: Optional[str] = None
+    technical_explanation: Optional[str] = None
+    implementation_steps: Optional[str] = None
+    estimated_time: Optional[str] = None
+    expected_score_improvement: Optional[int] = None
+    difficulty: Optional[str] = None
+    evidence: Optional[str] = None
+
+class PerformanceMetrics(BaseModel):
+    response_time_ms: Optional[float] = None
+    rendering_time_ms: Optional[float] = None
+    html_download_time_ms: Optional[float] = None
+    playwright_time_ms: Optional[float] = None
+    detection_time_ms: Optional[float] = None
+    total_scan_time_ms: Optional[float] = None
+    rendering_method: Optional[str] = None # "HTTPX" or "Playwright"
+
+class TechnologyDetection(BaseModel):
+    name: str
+    found: bool
+    evidence: Optional[str] = None
+    confidence: Optional[int] = None
+
+class PillarDetail(BaseModel):
+    score: float
+    passed_checks: int
+    failed_checks: int
+    confidence: int
+    business_explanation: str
+    technical_explanation: str
 
 class AuditReport(BaseModel):
     id: Optional[str] = Field(None, alias="_id")
@@ -16,11 +47,18 @@ class AuditReport(BaseModel):
     user_name: Optional[str] = None
     email: Optional[str] = None
     website_url: str
+    website_title: Optional[str] = None
     scan_type: str = "Full Audit"
     audit_score: int
+    grade: Optional[str] = None
+    benchmark: str = "Average"
+    target_score: str = "85+"
     category_scores: Dict[str, float]
+    pillar_details: Optional[Dict[str, PillarDetail]] = None
     recommendations: List[ReportRecommendation]
     issues_found: int = 0
+    technology_detections: Optional[List[TechnologyDetection]] = None
+    performance_metrics: Optional[PerformanceMetrics] = None
     scan_status: str = "Completed"
     pdf_path: Optional[str] = None
     pdf_url: Optional[str] = None

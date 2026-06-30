@@ -64,17 +64,17 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     # Send email
     user_email = report_dict.get("email")
     if user_email:
-        await send_audit_email(
+        email_success = await send_audit_email(
             to_email=user_email,
             user_name=report_dict.get("user_name", "User"),
             website_url=report_dict.get("website_url"),
             audit_score=report_dict.get("audit_score"),
             pdf_path=pdf_path
         )
-        report_dict["email_sent"] = True
+        report_dict["email_sent"] = email_success
         await db["audit_reports"].update_one(
             {"_id": ObjectId(inserted_id)},
-            {"$set": {"email_sent": True}}
+            {"$set": {"email_sent": email_success}}
         )
         
     return report_dict
@@ -123,7 +123,12 @@ async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_us
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF file missing from server.")
         
-    return FileResponse(pdf_path, media_type="application/pdf", filename=os.path.basename(pdf_path))
+    website_url = report.get("website_url", "unknown")
+    clean_url = website_url.replace("https://", "").replace("http://", "").replace("www.", "").replace(".", "-").replace("/", "").strip("-")
+    date_str = report.get("created_at", datetime.now(timezone.utc)).strftime("%Y-%m-%d") if isinstance(report.get("created_at"), datetime) else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    download_filename = f"website-audit-{clean_url}-{date_str}.pdf"
+        
+    return FileResponse(pdf_path, media_type="application/pdf", filename=download_filename)
 
 @router.post("/send-email/{audit_id}")
 async def resend_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
@@ -144,7 +149,7 @@ async def resend_audit_email(audit_id: str, db=Depends(get_database), current_us
     if not pdf_path or not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF file missing.")
         
-    await send_audit_email(
+    email_success = await send_audit_email(
         to_email=user_email,
         user_name=report.get("user_name", "User"),
         website_url=report.get("website_url"),
@@ -154,8 +159,11 @@ async def resend_audit_email(audit_id: str, db=Depends(get_database), current_us
     
     await db["audit_reports"].update_one(
         {"_id": oid},
-        {"$set": {"email_sent": True}}
+        {"$set": {"email_sent": email_success}}
     )
+    
+    if not email_success:
+        return {"success": False, "message": "Failed to send email."}
     
     return {"success": True, "message": "Email sent successfully."}
 

@@ -15,6 +15,7 @@ export class AuditReportDetailsComponent implements OnInit {
   report: any = null;
   isLoading = true;
   errorMessage = '';
+  isDownloading = false;
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -48,6 +49,34 @@ export class AuditReportDetailsComponent implements OnInit {
     });
   }
 
+  downloadPdf() {
+    if (!this.reportId || this.isDownloading) return;
+    this.isDownloading = true;
+
+    this.auditService.downloadAuditPdf(this.reportId).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Extract filename format based on date
+        const cleanUrl = this.report.website_url.replace(/https?:\/\//, '').replace(/^www\./, '').replace(/\./g, '-').replace(/\//g, '');
+        const dateStr = new Date(this.report.created_at).toISOString().split('T')[0];
+        a.download = `website-audit-${cleanUrl}-${dateStr}.pdf`;
+        
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        this.isDownloading = false;
+      },
+      error: (err) => {
+        console.error('Failed to download PDF', err);
+        this.isDownloading = false;
+      }
+    });
+  }
+
   getScoreColorClass(score: number): string {
     if (score >= 90) return 'excellent';
     if (score >= 70) return 'good';
@@ -56,14 +85,8 @@ export class AuditReportDetailsComponent implements OnInit {
   }
 
   getPillarTitle(key: string): string {
-    switch(key) {
-      case 'measurement': return 'Measurement & Analytics';
-      case 'retargeting': return 'Retargeting Tags';
-      case 'conversion': return 'Conversion & CRM';
-      case 'trust': return 'Trust & Security';
-      case 'seo_ai': return 'SEO & AI Search';
-      default: return key;
-    }
+    const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return formattedKey;
   }
 
   getObjectKeys(obj: any): string[] {

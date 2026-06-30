@@ -3,14 +3,14 @@
   @if (isLoading) {
     <div class="loading-state glass-card">
       <div class="spinner"></div>
-      <p>Loading your comprehensive audit report...</p>
+      <p>Generating Enterprise Audit Report...</p>
     </div>
   }
 
   @if (errorMessage) {
     <div class="error-state glass-card">
       <span class="error-icon">⚠️</span>
-      <h2>Unable to load report. Please try again.</h2>
+      <h2>Unable to load report.</h2>
       <p>{{ errorMessage }}</p>
       <div class="actions">
         <button class="btn-primary" (click)="loadReport(reportId)">Retry</button>
@@ -22,72 +22,106 @@
   @if (!isLoading && !errorMessage && report) {
     <div class="report-content">
       
-      <!-- Report Header -->
+      <!-- 1. Report Header -->
       <header class="report-header glass-card">
         <div class="header-main">
-          <div>
+          <div class="website-info">
+            <p class="subtitle">Website Audit Report</p>
             <h1 class="website-url">{{ report.website_url }}</h1>
-            <p class="audit-date">Audited on {{ report.created_at | date:'medium' }}</p>
+            <div class="meta-info">
+              <span><strong>Scan Date:</strong> {{ report.created_at | date:'medium' }}</span>
+              <span><strong>Report ID:</strong> {{ report._id }}</span>
+              <span><strong>User:</strong> {{ report.user_name }} ({{ report.email }})</span>
+            </div>
           </div>
           <div class="score-display">
             <div class="score-circle" [ngClass]="getScoreColorClass(report.audit_score)">
               <svg viewBox="0 0 36 36" class="circular-chart">
-                <path class="circle-bg"
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path class="circle"
-                  [attr.stroke-dasharray]="report.audit_score + ', 100'"
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle" [attr.stroke-dasharray]="report.audit_score + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 <text x="18" y="20.35" class="percentage">{{ report.audit_score }}</text>
               </svg>
             </div>
             <p class="score-label">Overall Score</p>
           </div>
         </div>
+        <div class="header-actions">
+          <button class="btn-primary download-btn" (click)="downloadPdf()" [disabled]="isDownloading">
+            <span *ngIf="!isDownloading">⬇ Download PDF</span>
+            <span *ngIf="isDownloading">⏳ Generating...</span>
+          </button>
+        </div>
       </header>
 
-      <!-- Category Breakdown -->
-      <section class="category-breakdown">
-        <h2 class="section-title">Category Breakdown</h2>
-        <div class="category-grid">
+      <!-- 2. Executive Summary -->
+      <section class="executive-summary glass-card">
+        <h2 class="section-title">Executive Summary</h2>
+        <div class="summary-content">
+          <p>
+            This enterprise-grade audit provides a comprehensive analysis of <strong>{{ report.website_url }}</strong>.
+            The overall digital maturity score is <strong>{{ report.audit_score }} / 100</strong>.
+            We identified <strong>{{ report.issues_found }} issues</strong> that require attention. 
+          </p>
+        </div>
+      </section>
+
+      <!-- 3. Overall Score Grid -->
+      <section class="overall-score-grid">
+        <div class="grid-item glass-card">
+          <span class="label">Overall Score</span>
+          <span class="value" [ngClass]="getScoreColorClass(report.audit_score)">{{ report.audit_score }}</span>
+        </div>
+        <div class="grid-item glass-card">
+          <span class="label">Grade</span>
+          <span class="value">{{ report.grade || 'C' }}</span>
+        </div>
+        <div class="grid-item glass-card">
+          <span class="label">Benchmark</span>
+          <span class="value">{{ report.benchmark || 'Average' }}</span>
+        </div>
+        <div class="grid-item glass-card">
+          <span class="label">Target Score</span>
+          <span class="value">{{ report.target_score || '85+' }}</span>
+        </div>
+      </section>
+
+      <!-- 4. Five Pillars -->
+      <section class="five-pillars">
+        <h2 class="section-title">Category Breakdown (Five Pillars)</h2>
+        <div class="pillars-grid">
           @for (key of getObjectKeys(report.category_scores); track key) {
-            <div class="category-card glass-card">
+            <div class="pillar-card glass-card">
               <h3>{{ getPillarTitle(key) }}</h3>
-              <div class="category-score">
-                <div class="score-bar-bg">
-                  <div class="score-bar-fill" 
-                       [ngClass]="getScoreColorClass(report.category_scores[key])"
-                       [style.width.%]="report.category_scores[key]">
+              
+              <div class="pillar-metrics">
+                <div class="metric-circle">
+                  <div class="circle-fill" [ngClass]="getScoreColorClass(report.category_scores[key])">
+                    {{ report.category_scores[key] }}
                   </div>
                 </div>
-                <span class="score-value">{{ report.category_scores[key] }} / 100</span>
+                <div class="metric-stats">
+                  @if (report.pillar_details && report.pillar_details[key]) {
+                    <span>Passed: <strong>{{ report.pillar_details[key].passed_checks }}</strong></span>
+                    <span>Failed: <strong>{{ report.pillar_details[key].failed_checks }}</strong></span>
+                  }
+                </div>
               </div>
+
+              @if (report.pillar_details && report.pillar_details[key]) {
+                <div class="pillar-explanations">
+                  <p><strong>Business Impact:</strong> {{ report.pillar_details[key].business_explanation }}</p>
+                  <p><strong>Technical Context:</strong> {{ report.pillar_details[key].technical_explanation }}</p>
+                </div>
+              }
             </div>
           }
         </div>
       </section>
 
-      <!-- Executive Summary -->
-      <section class="executive-summary glass-card">
-        <h2 class="section-title">Executive Summary</h2>
-        <div class="summary-content">
-          <p>
-            This report provides a comprehensive analysis of <strong>{{ report.website_url }}</strong>.
-            The overall audit score is <strong>{{ report.audit_score }} out of 100</strong>.
-            A total of <strong>{{ report.issues_found }} issues</strong> were identified that require attention to improve your website's performance, security, and discoverability.
-          </p>
-        </div>
-      </section>
-
-      <!-- Actionable Recommendations -->
+      <!-- 5. Detailed Findings & 6. Recommendations -->
       <section class="recommendations">
         <div class="section-header">
-          <h2 class="section-title">Actionable Recommendations</h2>
+          <h2 class="section-title">Detailed Findings & Recommendations</h2>
           <span class="badge">{{ report.issues_found }} Issues Found</span>
         </div>
         
@@ -100,17 +134,87 @@
             </div>
           } @else {
             @for (rec of report.recommendations; track rec.title) {
-              <div class="recommendation-card glass-card">
+              <div class="recommendation-card glass-card" [ngClass]="'priority-' + (rec.priority | lowercase)">
                 <div class="rec-header">
                   <span class="rec-category">{{ getPillarTitle(rec.category) }}</span>
-                  <span class="rec-priority" [class.high]="rec.priority === 'High'">{{ rec.priority }} Priority</span>
+                  <span class="rec-priority">{{ rec.priority }} Priority</span>
                 </div>
                 <h3 class="rec-title">{{ rec.title }}</h3>
-                <p class="rec-desc">{{ rec.description }}</p>
+                <div class="rec-details-grid">
+                  <div class="detail-box">
+                    <strong>Current Problem</strong>
+                    <p>{{ rec.current_problem || rec.description }}</p>
+                  </div>
+                  <div class="detail-box">
+                    <strong>Business Impact</strong>
+                    <p>{{ rec.business_impact || 'Impacts conversion rates and tracking accuracy.' }}</p>
+                  </div>
+                  <div class="detail-box full-width">
+                    <strong>How to Fix (Implementation)</strong>
+                    <p>{{ rec.implementation_steps || 'Review documentation and install required snippets.' }}</p>
+                  </div>
+                  <div class="detail-row">
+                    <span><strong>Est. Time:</strong> {{ rec.estimated_time || '15 Minutes' }}</span>
+                    <span><strong>Exp. Score:</strong> <span class="score-bump">+{{ rec.expected_score_improvement || 2 }}</span></span>
+                  </div>
+                </div>
               </div>
             }
           }
         </div>
+      </section>
+
+      <!-- 7. Technology Detection -->
+      @if (report.technology_detections && report.technology_detections.length > 0) {
+        <section class="technology-detection glass-card">
+          <h2 class="section-title">Technology Detection</h2>
+          <div class="tech-grid">
+            @for (tech of report.technology_detections; track tech.name) {
+              <div class="tech-badge" [class.found]="tech.found" [class.missing]="!tech.found">
+                <span class="tech-icon">{{ tech.found ? '✅' : '❌' }}</span>
+                <span class="tech-name">{{ tech.name }}</span>
+                @if (tech.confidence) {
+                  <span class="tech-conf">({{ tech.confidence }}%)</span>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- 8. Performance Summary -->
+      @if (report.performance_metrics) {
+        <section class="performance-summary glass-card">
+          <h2 class="section-title">Performance Summary</h2>
+          <div class="perf-grid">
+            @for (key of getObjectKeys(report.performance_metrics); track key) {
+              @if (report.performance_metrics[key] !== null) {
+                <div class="perf-item">
+                  <span class="perf-label">{{ getPillarTitle(key) }}</span>
+                  <span class="perf-value">
+                    {{ report.performance_metrics[key] }}
+                    {{ key.includes('time') ? 'ms' : '' }}
+                  </span>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      }
+
+      <!-- 9. Final Conclusion -->
+      <section class="final-conclusion glass-card">
+        <h2 class="section-title">Final Conclusion</h2>
+        <p>
+          The website {{ report.website_url }} currently scores a <strong>{{ report.audit_score }}/100</strong>. 
+          @if (report.audit_score >= 80) {
+            This is an excellent result, indicating high maturity in digital presence. Focus on minor optimizations.
+          } @else if (report.audit_score >= 50) {
+            This indicates average maturity. Implementing the recommendations provided in this report, particularly the high-priority ones, will significantly improve marketing impact, SEO, and conversion rates.
+          } @else {
+            This indicates low digital maturity. Urgent attention is required on critical and high-priority recommendations to avoid severe negative impacts on traffic and conversions.
+          }
+        </p>
       </section>
 
       <div class="report-footer">

@@ -1,28 +1,71 @@
+import os
+import smtplib
 import logging
+from email.message import EmailMessage
+import mimetypes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def send_audit_email(to_email: str, user_name: str, website_url: str, audit_score: int, pdf_path: str):
+async def send_audit_email(to_email: str, user_name: str, website_url: str, audit_score: int, pdf_path: str, max_retries: int = 3):
     """
-    Mock email service to send the audit report.
-    Logs the email details to the console instead of actually sending it.
+    Send the audit report PDF to the user's email using SMTP.
+    Handles failures gracefully and retries if necessary.
     """
-    logger.info("="*50)
-    logger.info("MOCK EMAIL SENDER ACTIVATED")
-    logger.info("="*50)
-    logger.info(f"To: {to_email}")
-    logger.info(f"Subject: Your Website Audit Report is Ready")
-    logger.info("Body:")
-    logger.info(f"  Hello {user_name},")
-    logger.info(f"  Your website audit has been completed successfully.")
-    logger.info(f"  Website: {website_url}")
-    logger.info(f"  Audit Score: {audit_score}")
-    logger.info(f"  Please find your detailed audit report attached.")
-    logger.info("  Regards,")
-    logger.info("  Website Auditor Team")
-    logger.info(f"Attachment Included: {pdf_path}")
-    logger.info("="*50)
-    
-    # In a real scenario, use aiosmtplib and email.message here
-    return True
+    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASSWORD")
+
+    if not smtp_user or not smtp_pass:
+        logger.warning("SMTP credentials not found in environment variables. Falling back to mock email.")
+        logger.info(f"MOCK EMAIL: Would send {pdf_path} to {to_email} for {website_url} with score {audit_score}")
+        return False
+
+    msg = EmailMessage()
+    msg['Subject'] = 'Website Audit Report'
+    msg['From'] = smtp_user
+    msg['To'] = to_email
+
+    body = f"""Thank you for using Website Auditor.
+
+Hello {user_name},
+
+Your comprehensive website audit for {website_url} is complete. 
+Your overall audit score is: {audit_score}/100.
+
+Please find your detailed website audit report attached.
+
+Regards,
+Website Auditor Team
+"""
+    msg.set_content(body)
+
+    # Attach the PDF
+    if os.path.exists(pdf_path):
+        ctype, encoding = mimetypes.guess_type(pdf_path)
+        if ctype is None or encoding is not None:
+            ctype = 'application/octet-stream'
+        maintype, subtype = ctype.split('/', 1)
+        with open(pdf_path, 'rb') as f:
+            msg.add_attachment(f.read(), maintype=maintype, subtype=subtype, filename=os.path.basename(pdf_path))
+    else:
+        logger.error(f"Failed to attach PDF: File not found at {pdf_path}")
+        return False
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Attempting to send email to {to_email} (Attempt {attempt}/{max_retries})")
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+            server.quit()
+            logger.info(f"Email successfully sent to {to_email}")
+            return True
+        except Exception as e:
+            logger.error(f"Email delivery failed on attempt {attempt}: {e}")
+            if attempt == max_retries:
+                logger.error(f"Max retries reached. Failed to send email to {to_email}.")
+                return False
+    return False
