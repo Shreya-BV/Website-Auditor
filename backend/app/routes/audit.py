@@ -1,9 +1,10 @@
 import os
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from typing import List
 from datetime import datetime, timezone
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 from app.database.mongodb import get_database
 from app.schemas.audit_report import AuditReport
@@ -33,11 +34,10 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     report_dict["_id"] = inserted_id
     
 
-    
     if DEBUG_REPORT_FLOW:
         print(f"[DEBUG_REPORT_FLOW] PDF Generation Started for Report ID: {inserted_id}")
     
-    # Generate PDF
+    # Generate PDF locally first
     pdf_dir = os.path.join(os.getcwd(), "reports")
     os.makedirs(pdf_dir, exist_ok=True)
     pdf_filename = f"audit_{inserted_id}.pdf"
@@ -49,13 +49,25 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
         if DEBUG_REPORT_FLOW:
             print("[DEBUG_REPORT_FLOW] PDF missing or empty. Regenerating automatically...")
         generate_audit_pdf(report_dict, pdf_path)
+        
+    # Read PDF and save to GridFS
+    fs = AsyncIOMotorGridFSBucket(db)
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+        
+    grid_in = fs.open_upload_stream(pdf_filename, metadata={"audit_id": inserted_id})
+    await grid_in.write(pdf_bytes)
+    await grid_in.close()
+    pdf_gridfs_id = str(grid_in._id)
     
-    if DEBUG_REPORT_FLOW:
-        print(f"[DEBUG_REPORT_FLOW] PDF Saved to Path: {pdf_path}")
-        print(f"[DEBUG_REPORT_FLOW] File Exists: {os.path.exists(pdf_path)}")
+    # Clean up ephemeral local file
+    try:
+        os.remove(pdf_path)
+    except Exception:
+        pass
     
-    # Update PDF path in DB
-    report_dict["pdf_path"] = pdf_path
+    # Update PDF metadata in DB
+    report_dict["pdf_gridfs_id"] = pdf_gridfs_id
     report_dict["pdf_filename"] = pdf_filename
     report_dict["pdf_generated"] = True
     report_dict["download_count"] = 0
@@ -63,7 +75,7 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     await db["audit_reports"].update_one(
         {"_id": ObjectId(inserted_id)}, 
         {"$set": {
-            "pdf_path": pdf_path,
+            "pdf_gridfs_id": pdf_gridfs_id,
             "pdf_filename": pdf_filename,
             "pdf_generated": True,
             "download_count": 0,
@@ -82,7 +94,8 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
             user_name=report_dict.get("user_name", "User"),
             website_url=report_dict.get("website_url"),
             audit_score=report_dict.get("audit_score"),
-            pdf_path=pdf_path
+            pdf_bytes=pdf_bytes,
+            pdf_filename=pdf_filename
         )
         
         delivery_status = "sent" if email_success else "failed"
@@ -160,28 +173,22 @@ async def get_audit_report(audit_id: str, db=Depends(get_database), current_user
 
 @router.get("/download/{audit_id}")
 async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
-    if DEBUG_REPORT_FLOW:
-        print(f"[DEBUG_REPORT_FLOW] Download Request Received for Audit ID: {audit_id} by User: {current_user.get('email')}")
     try:
         oid = ObjectId(audit_id)
     except Exception:
-        if DEBUG_REPORT_FLOW:
-            print("[DEBUG_REPORT_FLOW] Invalid audit ID format.")
         raise HTTPException(status_code=400, detail="Invalid audit ID format.")
         
     report = await db["audit_reports"].find_one({"_id": oid})
-    if not report or not report.get("pdf_path"):
-        if DEBUG_REPORT_FLOW:
-            print(f"[DEBUG_REPORT_FLOW] PDF not found in DB for ID: {audit_id}")
+    if not report or not report.get("pdf_gridfs_id"):
         raise HTTPException(status_code=404, detail="PDF not found.")
         
-    pdf_path = report["pdf_path"]
+    gridfs_id = ObjectId(report["pdf_gridfs_id"])
+    fs = AsyncIOMotorGridFSBucket(db)
     
-    if DEBUG_REPORT_FLOW:
-        print(f"[DEBUG_REPORT_FLOW] File Exists Check for {pdf_path}: {os.path.exists(pdf_path)}")
-        
-    if not os.path.exists(pdf_path):
-        raise HTTPException(status_code=404, detail="PDF file missing from server.")
+    try:
+        grid_out = await fs.open_download_stream(gridfs_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="PDF file missing from database.")
         
     # Increment download count
     await db["audit_reports"].update_one({"_id": oid}, {"$inc": {"download_count": 1}})
@@ -191,9 +198,18 @@ async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_us
     date_str = report.get("created_at", datetime.now(timezone.utc)).strftime("%Y-%m-%d") if isinstance(report.get("created_at"), datetime) else datetime.now(timezone.utc).strftime("%Y-%m-%d")
     download_filename = f"website-audit-{clean_url}-{date_str}.pdf"
         
-    if DEBUG_REPORT_FLOW:
-        print(f"[DEBUG_REPORT_FLOW] Download Response Sent for filename: {download_filename}")
-    return FileResponse(pdf_path, media_type="application/pdf", filename=download_filename)
+    async def pdf_generator():
+        while True:
+            chunk = await grid_out.read(1024 * 1024)
+            if not chunk:
+                break
+            yield chunk
+            
+    return StreamingResponse(
+        pdf_generator(), 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'}
+    )
 
 @router.post("/retry-email/{audit_id}")
 async def retry_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
@@ -213,19 +229,42 @@ async def retry_audit_email(audit_id: str, db=Depends(get_database), current_use
     if not user_email:
         raise HTTPException(status_code=400, detail="No email address associated with this report.")
         
-    pdf_path = report.get("pdf_path")
-    if not pdf_path or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
-        print("[DEBUG_REPORT_FLOW] PDF missing or empty on retry, generating automatically...")
+    fs = AsyncIOMotorGridFSBucket(db)
+    pdf_gridfs_id = report.get("pdf_gridfs_id")
+    pdf_filename = report.get("pdf_filename", f"audit_{oid}.pdf")
+    
+    pdf_bytes = None
+    if pdf_gridfs_id:
+        try:
+            grid_out = await fs.open_download_stream(ObjectId(pdf_gridfs_id))
+            pdf_bytes = await grid_out.read()
+        except Exception:
+            pass
+            
+    if not pdf_bytes:
+        print("[DEBUG_REPORT_FLOW] PDF missing in DB on retry, generating automatically...")
         pdf_dir = os.path.join(os.getcwd(), "reports")
         os.makedirs(pdf_dir, exist_ok=True)
-        pdf_filename = f"audit_{oid}.pdf"
         pdf_path = os.path.join(pdf_dir, pdf_filename)
         generate_audit_pdf(report, pdf_path)
+        
+        with open(pdf_path, 'rb') as f:
+            pdf_bytes = f.read()
+            
+        grid_in = fs.open_upload_stream(pdf_filename, metadata={"audit_id": str(oid)})
+        await grid_in.write(pdf_bytes)
+        await grid_in.close()
+        pdf_gridfs_id = str(grid_in._id)
+        
+        try:
+            os.remove(pdf_path)
+        except:
+            pass
         
         # Ensure the new path is updated in DB just in case
         await db["audit_reports"].update_one(
             {"_id": oid},
-            {"$set": {"pdf_path": pdf_path, "pdf_filename": pdf_filename, "pdf_generated": True}}
+            {"$set": {"pdf_gridfs_id": pdf_gridfs_id, "pdf_filename": pdf_filename, "pdf_generated": True}}
         )
         
     email_success, email_msg = await send_audit_email(
@@ -233,7 +272,8 @@ async def retry_audit_email(audit_id: str, db=Depends(get_database), current_use
         user_name=report.get("user_name", "User"),
         website_url=report.get("website_url"),
         audit_score=report.get("audit_score"),
-        pdf_path=pdf_path
+        pdf_bytes=pdf_bytes,
+        pdf_filename=pdf_filename
     )
     
     delivery_status = "sent" if email_success else "failed"
@@ -301,12 +341,13 @@ async def delete_audit_report(audit_id: str, db=Depends(get_database), current_u
     if not report:
         raise HTTPException(status_code=404, detail="Audit report not found.")
         
-    pdf_path = report.get("pdf_path")
-    if pdf_path and os.path.exists(pdf_path):
+    pdf_gridfs_id = report.get("pdf_gridfs_id")
+    if pdf_gridfs_id:
         try:
-            os.remove(pdf_path)
+            fs = AsyncIOMotorGridFSBucket(db)
+            await fs.delete(ObjectId(pdf_gridfs_id))
         except Exception as e:
-            print(f"Error removing PDF: {e}")
+            print(f"Error removing PDF from GridFS: {e}")
             
     await db["audit_reports"].delete_one({"_id": oid})
     

@@ -40,6 +40,8 @@
                 <th>Score</th>
                 <th>Issues</th>
                 <th>Status</th>
+                <th>PDF Generated</th>
+                <th>Email Status</th>
                 <th class="actions-col">Actions</th>
               </tr>
             </thead>
@@ -65,9 +67,19 @@
                       Completed
                     </span>
                   </td>
+                  <td>
+                    <span class="status-badge" [ngClass]="report.pdf_generated ? 'completed' : 'needs-improvement'">
+                      {{ report.pdf_generated ? 'Yes' : 'No' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="status-badge" [ngClass]="report.delivery_status === 'sent' ? 'completed' : 'needs-improvement'">
+                      {{ report.delivery_status === 'sent' ? 'Sent' : (report.delivery_status || 'Pending') | titlecase }}
+                    </span>
+                  </td>
                   <td class="actions-col">
                     <div class="action-buttons">
-                      <button *ngIf="report.pdf_path" (click)="downloadPdf(report._id || report.id, report, $event)" [disabled]="downloadingReportId === (report._id || report.id)" class="btn-icon" title="Download Report">
+                      <button *ngIf="report.pdf_gridfs_id || report.pdf_path" (click)="downloadPdf(report._id || report.id, report, $event)" [disabled]="downloadingReportId === (report._id || report.id)" class="btn-icon" title="Download Report">
                         <svg *ngIf="downloadingReportId !== (report._id || report.id)" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         <span *ngIf="downloadingReportId === (report._id || report.id)" style="font-size:12px;">⏳</span>
                       </button>

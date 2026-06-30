@@ -8,7 +8,7 @@ import traceback
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def send_audit_email(to_email: str, user_name: str, website_url: str, audit_score: int, pdf_path: str, max_retries: int = 3):
+async def send_audit_email(to_email: str, user_name: str, website_url: str, audit_score: int, pdf_bytes: bytes, pdf_filename: str, max_retries: int = 3):
     """
     Send the audit report PDF to the user's email using SMTP.
     Handles failures gracefully and retries if necessary.
@@ -61,29 +61,19 @@ Website Auditor Team"""
     msg.set_content(body)
 
     # Attach the PDF
-    logger.info(f"[EMAIL SERVICE] Checking for PDF attachment at {pdf_path}")
-    if os.path.exists(pdf_path):
-        if os.path.getsize(pdf_path) == 0:
-            error_msg = f"Failed to attach PDF: File at {pdf_path} is empty."
-            logger.error(f"[EMAIL SERVICE] {error_msg}")
-            return False, error_msg
-
+    logger.info(f"[EMAIL SERVICE] Checking PDF bytes for {pdf_filename}")
+    if pdf_bytes and len(pdf_bytes) > 0:
         logger.info(f"[EMAIL SERVICE] PDF found. Attaching to email...")
-        ctype, encoding = mimetypes.guess_type(pdf_path)
-        if ctype is None or encoding is not None:
-            ctype = 'application/octet-stream'
-        maintype, subtype = ctype.split('/', 1)
         try:
-            with open(pdf_path, 'rb') as f:
-                msg.add_attachment(f.read(), maintype=maintype, subtype=subtype, filename=os.path.basename(pdf_path))
+            msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=pdf_filename)
             logger.info(f"[EMAIL SERVICE] Attachment added successfully.")
         except Exception as e:
-            error_msg = f"Error reading PDF file: {e}"
+            error_msg = f"Error attaching PDF bytes: {e}"
             logger.error(f"[EMAIL SERVICE] {error_msg}")
             logger.error(f"[EMAIL SERVICE] Exception Traceback:\n{traceback.format_exc()}")
             return False, error_msg
     else:
-        error_msg = f"Failed to attach PDF: File not found at {pdf_path}"
+        error_msg = f"Failed to attach PDF: Byte data is empty or None"
         logger.error(f"[EMAIL SERVICE] {error_msg}")
         return False, error_msg
 
