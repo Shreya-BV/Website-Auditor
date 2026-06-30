@@ -67,59 +67,58 @@ class RenderingEngine:
         self.ssl_valid = ssl_valid if self.url.startswith("https://") else False
 
     async def fetch_playwright(self):
-        try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True, args=['--disable-gpu', '--no-sandbox'])
-                context = await browser.new_context(user_agent=self.user_agent)
-                # Block media/images to speed up rendering
-                await context.route("**/*", lambda route: route.continue_() if route.request.resource_type not in ["image", "media", "font"] else route.abort())
-                page = await context.new_page()
+        def _run_playwright_sync(url, user_agent):
+            import sys
+            import asyncio
+            if sys.platform == "win32":
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
                 
+            from playwright.sync_api import sync_playwright, Error as SyncPlaywrightError
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True, args=['--disable-gpu', '--no-sandbox'])
+                context = browser.new_context(user_agent=user_agent)
+                context.route("**/*", lambda route: route.continue_() if route.request.resource_type not in ["image", "media", "font"] else route.abort())
+                page = context.new_page()
                 try:
-                    await page.goto(self.url, wait_until="domcontentloaded", timeout=25000)
-                    
-                    # Scroll to trigger lazy-loaded elements
-                    await page.evaluate("""
+                    page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                    page.evaluate("""
                         window.scrollTo(0, document.body.scrollHeight / 2);
                         setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 500);
                     """)
-                    
-                    # Wait for network idle or timeout
                     try:
-                        await page.wait_for_load_state("networkidle", timeout=5000)
-                    except PlaywrightError:
-                        pass # Ignore networkidle timeout, we still have DOM
-                    
-                    self.html = await page.content()
-                    
-                    # Check JS variables for tracking and analytics
-                    js_vars = await page.evaluate("""() => {
+                        page.wait_for_load_state("networkidle", timeout=5000)
+                    except SyncPlaywrightError:
+                        pass
+                    html = page.content()
+                    js_vars = page.evaluate("""() => {
                         return {
                             'ga': typeof window.ga !== 'undefined' || typeof window.gtag !== 'undefined',
-                            'dataLayer': typeof window.dataLayer !== 'undefined' && window.dataLayer.length > 0,
-                            'fbq': typeof window.fbq !== 'undefined' || typeof window._fbq !== 'undefined',
-                            'ttq': typeof window.ttq !== 'undefined',
-                            'pintrk': typeof window.pintrk !== 'undefined',
-                            'hubspot': typeof window.HubSpotConversations !== 'undefined' || typeof window._hsq !== 'undefined',
+                            'gtm': typeof window.dataLayer !== 'undefined' || typeof window.google_tag_manager !== 'undefined',
+                            'meta': typeof window.fbq !== 'undefined' || typeof window._fbq !== 'undefined',
+                            'tiktok': typeof window.ttq !== 'undefined',
+                            'pinterest': typeof window.pintrk !== 'undefined',
+                            'crm': typeof window.HubSpotConversations !== 'undefined' || typeof window._hsq !== 'undefined' || typeof window.zE !== 'undefined',
                             'clarity': typeof window.clarity !== 'undefined',
-                            'hj': typeof window.hj !== 'undefined',
-                            'intercom': typeof window.Intercom !== 'undefined',
-                            'zendesk': typeof window.zE !== 'undefined',
-                            'tawk': typeof window.Tawk_API !== 'undefined'
+                            'hotjar': typeof window.hj !== 'undefined',
+                            'live chat': typeof window.Intercom !== 'undefined' || typeof window.Tawk_API !== 'undefined' || typeof window.zE !== 'undefined',
+                            'linkedin': typeof window.lintrk !== 'undefined',
+                            'google ads': typeof window.gtag !== 'undefined'
                         };
                     }""")
-                    self.pw_js_vars = js_vars
-                    self.rendered_by_pw = True
-                except Exception as e:
-                    logger.warning(f"Playwright navigation/execution error: {str(e)}")
-                    # Fallback to HTTPX html if PW totally failed and we had nothing
-                    if not self.html:
-                        raise e
+                    return html, js_vars
                 finally:
-                    await browser.close()
+                    browser.close()
+
+        try:
+            loop = asyncio.get_event_loop()
+            html, js_vars = await loop.run_in_executor(None, _run_playwright_sync, self.url, self.user_agent)
+            self.html = html
+            self.pw_js_vars = js_vars
+            self.rendered_by_pw = True
         except Exception as e:
             logger.error(f"Playwright critical error: {str(e)}")
             self.error = str(e)
+
 
     async def fetch(self):
         start_time = datetime.now()
