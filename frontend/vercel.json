@@ -2,7 +2,7 @@
   "version": 2,
   "framework": "angular",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/website-auditor",
+  "outputDirectory": "dist/website-auditor/browser",
   "rewrites": [
     {
       "source": "/(.*)",
