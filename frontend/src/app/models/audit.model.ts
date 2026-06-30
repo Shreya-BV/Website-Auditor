@@ -67,6 +67,8 @@ export interface AuditReport {
   email_sent: boolean;
   email_sent_at?: string;
   delivery_status?: string;
+  error_message?: string;
+  message_id?: string;
   created_at: string;
   updated_at: string;
 }

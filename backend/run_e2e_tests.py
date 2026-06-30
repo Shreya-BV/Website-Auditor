@@ -13,7 +13,7 @@ async def run_e2e():
     async with httpx.AsyncClient(timeout=120.0) as client:
         # 1. Register
         logger.info("Registering user...")
-        email = "testaudit@example.com"
+        email = "shreyavaradaraj3131+test1@gmail.com"
         password = "Password123!"
         resp = await client.post(f"{BASE_URL}/auth/register", json={
             "full_name": "Test Auditor",
@@ -60,7 +60,7 @@ async def run_e2e():
         logger.info(f"Scan complete. Report ID: {report_id}")
         
         # 5. Get Report Details
-        resp = await client.get(f"{BASE_URL}/audit/reports/{report_id}", headers=headers)
+        resp = await client.get(f"{BASE_URL}/audit/{report_id}", headers=headers)
         if resp.status_code != 200:
             # Try just /audit/{report_id} ? Let's check routes if this fails.
             pass

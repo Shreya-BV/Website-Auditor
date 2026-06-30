@@ -43,7 +43,10 @@
         <div class="email-banner error glass-card">
           <span class="banner-icon">⚠️</span>
           <div class="banner-content">
-            <strong>Notice:</strong> Report generated successfully, but email delivery failed.
+            <strong>Notice:</strong> Report generated successfully, but email delivery failed.<br>
+            @if (report.error_message) {
+              <span class="error-detail"><strong>Reason:</strong> {{ report.error_message }}</span>
+            }
           </div>
           <div class="banner-actions">
             <button class="btn-primary retry-btn" (click)="retryEmail()" [disabled]="isRetryingEmail">

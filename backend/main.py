@@ -27,6 +27,32 @@ from app.routes.auth import router as auth_router
 async def lifespan(app: FastAPI):
     # Startup database connection
     connect_db()
+    
+    # SMTP Validation (Phase 2)
+    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_port = os.environ.get("SMTP_PORT")
+    smtp_username = os.environ.get("SMTP_USERNAME")
+    smtp_password = os.environ.get("SMTP_PASSWORD")
+    from_email = os.environ.get("FROM_EMAIL")
+    
+    missing_vars = []
+    if not smtp_host: missing_vars.append("SMTP_HOST")
+    if not smtp_port: missing_vars.append("SMTP_PORT")
+    if not smtp_username: missing_vars.append("SMTP_USERNAME")
+    if not smtp_password: missing_vars.append("SMTP_PASSWORD")
+    if not from_email: missing_vars.append("FROM_EMAIL")
+    
+    if missing_vars:
+        error_msg = f"Missing required SMTP configuration variables: {', '.join(missing_vars)}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+        
+    logger.info("SMTP_HOST loaded")
+    logger.info("SMTP_PORT loaded")
+    logger.info("SMTP_USERNAME loaded")
+    logger.info(f"SMTP_PASSWORD present: {bool(smtp_password)}")
+    logger.info("FROM_EMAIL loaded")
+
     yield
     # Shutdown database connection
     close_db()

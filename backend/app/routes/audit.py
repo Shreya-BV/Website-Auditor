@@ -45,6 +45,11 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     
     generate_audit_pdf(report_dict, pdf_path)
     
+    if not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
+        if DEBUG_REPORT_FLOW:
+            print("[DEBUG_REPORT_FLOW] PDF missing or empty. Regenerating automatically...")
+        generate_audit_pdf(report_dict, pdf_path)
+    
     if DEBUG_REPORT_FLOW:
         print(f"[DEBUG_REPORT_FLOW] PDF Saved to Path: {pdf_path}")
         print(f"[DEBUG_REPORT_FLOW] File Exists: {os.path.exists(pdf_path)}")
@@ -72,7 +77,7 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
         if DEBUG_REPORT_FLOW:
             print(f"[DEBUG_REPORT_FLOW] Queuing Email for {user_email}")
             
-        email_success = await send_audit_email(
+        email_success, email_msg = await send_audit_email(
             to_email=user_email,
             user_name=report_dict.get("user_name", "User"),
             website_url=report_dict.get("website_url"),
@@ -84,7 +89,7 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
         sent_at = datetime.now(timezone.utc) if email_success else None
         
         if DEBUG_REPORT_FLOW:
-            print(f"[DEBUG_REPORT_FLOW] Email Delivery Status to {user_email}: {delivery_status}")
+            print(f"[DEBUG_REPORT_FLOW] Email Delivery Status to {user_email}: {delivery_status}, Message: {email_msg}")
             
         email_delivery_record = {
             "audit_id": inserted_id,
@@ -97,7 +102,7 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
             "delivery_status": delivery_status,
             "retry_count": 0,
             "sent_at": sent_at,
-            "failure_reason": None if email_success else "SMTP Delivery Failed",
+            "failure_reason": None if email_success else email_msg,
             "created_at": datetime.now(timezone.utc)
         }
         
@@ -106,13 +111,19 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
         report_dict["email_sent"] = email_success
         report_dict["email_sent_at"] = sent_at
         report_dict["delivery_status"] = delivery_status
+        report_dict["error_message"] = None if email_success else email_msg
+        
+        import uuid
+        message_id = str(uuid.uuid4()) if email_success else None
         
         await db["audit_reports"].update_one(
             {"_id": ObjectId(inserted_id)},
             {"$set": {
                 "email_sent": email_success,
                 "email_sent_at": sent_at,
-                "delivery_status": delivery_status
+                "delivery_status": delivery_status,
+                "error_message": None if email_success else email_msg,
+                "message_id": message_id
             }}
         )
         
@@ -203,10 +214,21 @@ async def retry_audit_email(audit_id: str, db=Depends(get_database), current_use
         raise HTTPException(status_code=400, detail="No email address associated with this report.")
         
     pdf_path = report.get("pdf_path")
-    if not pdf_path or not os.path.exists(pdf_path):
-        raise HTTPException(status_code=404, detail="PDF file missing.")
+    if not pdf_path or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
+        print("[DEBUG_REPORT_FLOW] PDF missing or empty on retry, generating automatically...")
+        pdf_dir = os.path.join(os.getcwd(), "reports")
+        os.makedirs(pdf_dir, exist_ok=True)
+        pdf_filename = f"audit_{oid}.pdf"
+        pdf_path = os.path.join(pdf_dir, pdf_filename)
+        generate_audit_pdf(report, pdf_path)
         
-    email_success = await send_audit_email(
+        # Ensure the new path is updated in DB just in case
+        await db["audit_reports"].update_one(
+            {"_id": oid},
+            {"$set": {"pdf_path": pdf_path, "pdf_filename": pdf_filename, "pdf_generated": True}}
+        )
+        
+    email_success, email_msg = await send_audit_email(
         to_email=user_email,
         user_name=report.get("user_name", "User"),
         website_url=report.get("website_url"),
@@ -224,22 +246,27 @@ async def retry_audit_email(audit_id: str, db=Depends(get_database), current_use
             "$set": {
                 "delivery_status": delivery_status,
                 "sent_at": sent_at,
-                "failure_reason": None if email_success else "Retry Failed"
+                "failure_reason": None if email_success else email_msg
             }
         }
     )
+    
+    import uuid
+    message_id = str(uuid.uuid4()) if email_success else None
     
     await db["audit_reports"].update_one(
         {"_id": oid},
         {"$set": {
             "email_sent": email_success,
             "email_sent_at": sent_at,
-            "delivery_status": delivery_status
+            "delivery_status": delivery_status,
+            "error_message": None if email_success else email_msg,
+            "message_id": message_id
         }}
     )
     
     if not email_success:
-        return {"success": False, "message": "Failed to send email on retry."}
+        return {"success": False, "message": email_msg}
     
     return {"success": True, "message": "Email sent successfully on retry."}
 
