@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"Playwright Status: Error - {e}", exc_info=True)
         
     # Startup database connection
-    connect_db()
+    await connect_db()
     logger.info("MongoDB Connection: Initialization called")
     
     # SMTP Validation (Phase 2)
@@ -107,8 +107,15 @@ app.include_router(audit_router, prefix="/api/audit")
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 @app.get("/")
 async def root():
-    logger.info("Health Check accessed")
+    logger.info("Root endpoint accessed")
     return {"message": "Welcome to the Website Auditor API. The service is running.", "status": "ok"}
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "mongodb": "connected"
+    }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
