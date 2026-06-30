@@ -1,11 +1,2 @@
-[phases.setup]
-nixPkgs = ["python311"]
-
-[phases.build]
-cmds = [
-  "playwright install chromium",
-  "playwright install-deps"
-]
-
-[start]
-cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+[phases.install]
+cmds = ["...", "playwright install chromium", "playwright install-deps"]
