@@ -3,14 +3,10 @@ nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
-    "python -m venv /opt/venv",
-    ". /opt/venv/bin/activate && pip install -r requirements.txt",
-    ". /opt/venv/bin/activate && playwright install chromium",
-    ". /opt/venv/bin/activate && playwright install-deps"
+  "pip install -r requirements.txt",
+  "playwright install chromium",
+  "playwright install-deps"
 ]
 
-[phases.build]
-cmds = []
-
-[phases.start]
-cmd = ". /opt/venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port $PORT"
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
