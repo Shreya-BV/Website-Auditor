@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { TokenService } from './token.service';
 
 export interface User {
   id?: string;
@@ -24,38 +25,36 @@ interface AuthResponse {
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private tokenService = inject(TokenService);
   
   private apiUrl = `${environment.apiUrl}/auth`;
   
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   
-  public isAuthenticated = signal<boolean>(false);
+  public isAuthenticated = this.tokenService.isAuthenticated;
 
   constructor() {
+    console.log('[DEBUG] AuthService initialized');
     this.checkInitialAuth();
   }
 
   private checkInitialAuth() {
-    const token = this.getToken();
-    if (token) {
-      this.isAuthenticated.set(true);
+    if (this.tokenService.hasToken()) {
       this.fetchCurrentUser().subscribe();
     }
   }
 
   getToken(): string | null {
-    return localStorage.getItem('access_token');
+    return this.tokenService.getToken();
   }
 
   setToken(token: string) {
-    localStorage.setItem('access_token', token);
-    this.isAuthenticated.set(true);
+    this.tokenService.setToken(token);
   }
 
   removeToken() {
-    localStorage.removeItem('access_token');
-    this.isAuthenticated.set(false);
+    this.tokenService.removeToken();
     this.currentUserSubject.next(null);
   }
 
@@ -88,14 +87,15 @@ export class AuthService {
   }
 
   fetchCurrentUser(): Observable<User | null> {
-    if (!this.getToken()) {
+    if (!this.tokenService.hasToken()) {
       return of(null);
     }
     
     return this.http.get<User>(`${this.apiUrl}/me`).pipe(
       tap(user => {
+        console.log('[DEBUG] Current User Loaded', user?.email);
         this.currentUserSubject.next(user);
-        this.isAuthenticated.set(true);
+        this.tokenService.isAuthenticated.set(true);
       }),
       catchError(err => {
         console.error('Error fetching current user:', err);

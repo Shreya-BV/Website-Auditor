@@ -100,6 +100,7 @@ export class AuditReportComponent implements OnInit {
 
   retryEmail() {
     if (!this.reportId || !this.report) return;
+    console.log('[DEBUG] Email Request Sent for Audit ID:', this.reportId);
     this.isRetryingEmail = true;
     this.retryEmailSuccess = false;
     this.retryEmailError = '';
