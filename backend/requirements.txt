@@ -10,3 +10,4 @@ python-dotenv
 playwright
 passlib[bcrypt]
 pyjwt
+email-validator
