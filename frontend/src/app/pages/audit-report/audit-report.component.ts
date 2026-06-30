@@ -79,8 +79,8 @@ export class AuditReportComponent implements OnInit {
     this.leadService.submitLead(
       this.leadName,
       this.leadEmail,
-      this.report.url,
-      this.report.overall_score
+      this.report.website_url,
+      this.report.audit_score
     ).subscribe({
       next: () => {
         this.isSubmittingLead = false;
@@ -94,12 +94,13 @@ export class AuditReportComponent implements OnInit {
   }
 
   getPillarTitle(key: string): string {
-    switch(key) {
+    switch(key.toLowerCase()) {
       case 'measurement': return 'Measurement & Analytics';
       case 'retargeting': return 'Retargeting Tags';
       case 'conversion': return 'Conversion & CRM';
       case 'trust': return 'Trust & Security';
       case 'seo_ai': return 'SEO & AI Search';
+      case 'seo/ai': return 'SEO & AI Search';
       default: return key;
     }
   }
@@ -124,8 +125,19 @@ export class AuditReportComponent implements OnInit {
 
   getPillarScore(pillarKey: string): number {
     if (!this.report) return 0;
-    const scores = this.report.pillar_scores as any;
-    return scores[pillarKey] || 0;
+    const scores = this.report.category_scores as any;
+    
+    // Attempt to map pillarKey to exact category score key
+    const mapping: {[key: string]: string} = {
+      'measurement': 'Measurement',
+      'retargeting': 'Retargeting',
+      'conversion': 'Conversion',
+      'trust': 'Trust',
+      'seo_ai': 'SEO/AI'
+    };
+    
+    const mappedKey = mapping[pillarKey] || pillarKey;
+    return scores[mappedKey] || 0;
   }
 
   getPillarChecks(pillarKey: string): any {

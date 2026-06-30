@@ -1,82 +1,70 @@
-export interface Recommendation {
-  pillar: string;
-  item: string;
-  recommendation: string;
-  issue?: string;
-  reason?: string;
+export interface ReportRecommendation {
+  category: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  current_problem?: string;
   business_impact?: string;
-  how_to_fix?: string;
+  technical_explanation?: string;
+  implementation_steps?: string;
   estimated_time?: string;
-  priority?: string;
-  expected_score_increase?: number;
+  expected_score_improvement?: number;
+  difficulty?: string;
+  evidence?: string;
 }
 
-export interface CheckResult {
+export interface PerformanceMetrics {
+  response_time_ms?: number;
+  rendering_time_ms?: number;
+  html_download_time_ms?: number;
+  playwright_time_ms?: number;
+  detection_time_ms?: number;
+  total_scan_time_ms?: number;
+  rendering_method?: string;
+}
+
+export interface TechnologyDetection {
+  name: string;
   found: boolean;
-  confidence: number;
-  method: string;
   evidence?: string;
+  confidence?: number;
+}
+
+export interface PillarDetail {
+  score: number;
+  passed_checks: number;
+  failed_checks: number;
+  confidence: number;
+  business_explanation: string;
+  technical_explanation: string;
 }
 
 export interface AuditReport {
   id?: string;
   _id?: string;
-  url: string;
-  overall_score: number;
-  grade: string;
-  pillar_scores: {
-    measurement: number;
-    retargeting: number;
-    conversion: number;
-    trust: number;
-    seo_ai: number;
-  };
-  checks: {
-    measurement: {
-      google_analytics: CheckResult;
-      gtm: CheckResult;
-      clarity: CheckResult;
-      hotjar: CheckResult;
-    };
-    retargeting: {
-      meta_pixel: CheckResult;
-      google_ads: CheckResult;
-      linkedin_insight: CheckResult;
-      tiktok_pixel: CheckResult;
-      pinterest_pixel: CheckResult;
-    };
-    conversion: {
-      contact_form: CheckResult;
-      newsletter_form: CheckResult;
-      whatsapp: CheckResult;
-      messenger: CheckResult;
-      live_chat: CheckResult;
-      calendly: CheckResult;
-      crm: CheckResult;
-    };
-    trust: {
-      https: CheckResult;
-      ssl: CheckResult;
-      cookies: CheckResult;
-      privacy_policy: CheckResult;
-      terms: CheckResult;
-      contact_page: CheckResult;
-      accessibility: CheckResult;
-    };
-    seo_ai: {
-      canonical_url: CheckResult;
-      meta_title: CheckResult;
-      meta_description: CheckResult;
-      sitemap: CheckResult;
-      robots: CheckResult;
-      schema_markup: CheckResult;
-      opengraph: CheckResult;
-      twitter_card: CheckResult;
-      llms_txt: CheckResult;
-      security_headers: CheckResult;
-    };
-  };
-  recommendations: Recommendation[];
+  audit_id?: string;
+  user_id?: string;
+  user_name?: string;
+  email?: string;
+  website_url: string;
+  website_title?: string;
+  scan_type: string;
+  audit_score: number;
+  grade?: string;
+  benchmark: string;
+  target_score: string;
+  category_scores: Record<string, number>;
+  pillar_details?: Record<string, PillarDetail>;
+  recommendations: ReportRecommendation[];
+  checks?: any;
+  issues_found: number;
+  technology_detections?: TechnologyDetection[];
+  performance_metrics?: PerformanceMetrics;
+  scan_status: string;
+  pdf_path?: string;
+  pdf_url?: string;
+  email_sent: boolean;
   created_at: string;
   updated_at: string;
 }

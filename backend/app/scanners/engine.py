@@ -155,32 +155,108 @@ class HybridScanner:
         
         recommendations = RecommendationEngine.generate(all_checks)
 
-        return {
-            "url": self.renderer.url,
-            "overall_score": overall_score,
-            "grade": grade,
-            "pillar_scores": {
-                "measurement": m_score,
-                "retargeting": r_score,
-                "conversion": c_score,
-                "trust": t_score,
-                "seo_ai": s_score
+        # Format recommendations for new schema
+        mapped_recs = []
+        for r in recommendations:
+            mapped_recs.append({
+                "category": r.get("pillar", "General"),
+                "title": r.get("item", "Issue"),
+                "description": r.get("recommendation", ""),
+                "priority": r.get("priority", "Medium"),
+                "status": "Open",
+                "current_problem": r.get("issue", ""),
+                "business_impact": r.get("business_impact", ""),
+                "technical_explanation": r.get("reason", ""),
+                "implementation_steps": r.get("how_to_fix", ""),
+                "estimated_time": r.get("estimated_time", ""),
+                "expected_score_improvement": r.get("expected_score_increase", 0)
+            })
+            
+        # Compile Technology Detections
+        techs = []
+        non_tech_keys = {"https", "ssl", "privacy_policy", "terms", "contact_page", "accessibility", "contact_form", "newsletter_form", "whatsapp", "canonical_url", "meta_title", "meta_description", "sitemap", "robots", "schema_markup", "opengraph", "twitter_card", "llms_txt", "security_headers"}
+        for pillar, checks_dict in all_checks.items():
+            for check_name, check_data in checks_dict.items():
+                if isinstance(check_data, dict) and "method" in check_data and check_name not in non_tech_keys:
+                    techs.append({
+                        "name": check_name.replace("_", " ").title(),
+                        "found": check_data.get("found", False),
+                        "evidence": str(check_data.get("evidence")) if check_data.get("evidence") else None,
+                        "confidence": check_data.get("confidence", 0)
+                    })
+
+        # Pillar Details mapping
+        def count_checks(checks_dict):
+            passed = sum(1 for v in checks_dict.values() if v.get("found"))
+            failed = len(checks_dict) - passed
+            conf = sum(v.get("confidence", 0) for v in checks_dict.values()) / max(1, len(checks_dict))
+            return passed, failed, int(conf)
+            
+        m_p, m_f, m_c = count_checks(meas_checks)
+        r_p, r_f, r_c = count_checks(retarg_checks)
+        c_p, c_f, c_c = count_checks(conv_checks)
+        t_p, t_f, t_c = count_checks(trust_checks)
+        s_p, s_f, s_c = count_checks(seo_checks)
+
+        pillar_details = {
+            "Measurement": {
+                "score": float(m_score), "passed_checks": m_p, "failed_checks": m_f, "confidence": m_c,
+                "business_explanation": "Tracks user engagement and traffic sources.",
+                "technical_explanation": m_exp
             },
-            "explanations": {
-                "measurement": m_exp,
-                "retargeting": r_exp,
-                "conversion": c_exp,
-                "trust": t_exp,
-                "seo_ai": s_exp
+            "Retargeting": {
+                "score": float(r_score), "passed_checks": r_p, "failed_checks": r_f, "confidence": r_c,
+                "business_explanation": "Enables remarketing to previous visitors.",
+                "technical_explanation": r_exp
             },
-            "checks": all_checks,
-            "recommendations": recommendations,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-            "debug": {
-                "rendering_mode": "Playwright" if self.renderer.rendered_by_pw else "HTTPX",
-                "response_time": self.renderer.response_time
+            "Conversion": {
+                "score": float(c_score), "passed_checks": c_p, "failed_checks": c_f, "confidence": c_c,
+                "business_explanation": "Facilitates lead generation and customer contact.",
+                "technical_explanation": c_exp
+            },
+            "Trust": {
+                "score": float(t_score), "passed_checks": t_p, "failed_checks": t_f, "confidence": t_c,
+                "business_explanation": "Builds user confidence and ensures legal compliance.",
+                "technical_explanation": t_exp
+            },
+            "SEO/AI": {
+                "score": float(s_score), "passed_checks": s_p, "failed_checks": s_f, "confidence": s_c,
+                "business_explanation": "Improves organic search visibility and AI comprehension.",
+                "technical_explanation": s_exp
             }
+        }
+
+        perf_metrics = {
+            "response_time_ms": self.renderer.response_time,
+            "total_scan_time_ms": self.renderer.response_time,
+            "rendering_method": "Playwright" if self.renderer.rendered_by_pw else "HTTPX"
+        }
+
+        return {
+            "website_url": self.renderer.url,
+            "scan_type": "Full Audit",
+            "audit_score": overall_score,
+            "grade": grade,
+            "benchmark": "Average",
+            "target_score": "85+",
+            "category_scores": {
+                "Measurement": float(m_score),
+                "Retargeting": float(r_score),
+                "Conversion": float(c_score),
+                "Trust": float(t_score),
+                "SEO/AI": float(s_score)
+            },
+            "pillar_details": pillar_details,
+            "recommendations": mapped_recs,
+            "checks": all_checks,
+            "issues_found": len(mapped_recs),
+            "technology_detections": techs,
+            "performance_metrics": perf_metrics,
+            "scan_status": "Completed",
+            "pdf_generated": False,
+            "email_sent": False,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         }
 
 async def run_scan(url: str) -> Dict[str, Any]:
@@ -191,12 +267,12 @@ async def run_scan(url: str) -> Dict[str, Any]:
     report = await scanner.run()
     
     print("\n--- SCORES GENERATED BY ENGINE ---")
-    print(f"Measurement Score: {report['pillar_scores']['measurement']}")
-    print(f"Retargeting Score: {report['pillar_scores']['retargeting']}")
-    print(f"Conversion Score:  {report['pillar_scores']['conversion']}")
-    print(f"Trust Score:       {report['pillar_scores']['trust']}")
-    print(f"SEO Score:         {report['pillar_scores']['seo_ai']}")
-    print(f"FINAL OVERALL SCORE: {report['overall_score']}")
+    print(f"Measurement Score: {report['category_scores']['Measurement']}")
+    print(f"Retargeting Score: {report['category_scores']['Retargeting']}")
+    print(f"Conversion Score:  {report['category_scores']['Conversion']}")
+    print(f"Trust Score:       {report['category_scores']['Trust']}")
+    print(f"SEO Score:         {report['category_scores']['SEO/AI']}")
+    print(f"FINAL OVERALL SCORE: {report['audit_score']}")
     print("----------------------------------\n")
     
     return report

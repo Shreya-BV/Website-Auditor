@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 from app.database.mongodb import get_database
-from app.schemas.scan import ScanRequest, AuditReportResponse
+from app.schemas.scan import ScanRequest
+from app.schemas.audit_report import AuditReport
 from app.schemas.visitor import VisitorCreate, VisitorLog
 from app.schemas.lead import LeadCreate, Lead
 from app.schemas.dashboard import DashboardStats, DailyCount
@@ -29,9 +30,8 @@ def serialize_list(docs):
 
 import traceback
 
-@router.post("/scan", response_model=AuditReportResponse)
-async def scan_website(payload: ScanRequest, db=Depends(get_database)):
-    current_user = {"_id": "test_id", "full_name": "Test User"}
+@router.post("/scan", response_model=AuditReport)
+async def scan_website(payload: ScanRequest, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     print("Scan request received")
     print("Website URL:", payload.url)
     logger.info(f"Received scan request for URL: {payload.url}")
@@ -49,64 +49,32 @@ async def scan_website(payload: ScanRequest, db=Depends(get_database)):
         print("Starting scraper")
         logger.info(f"Starting backend processing for {url}")
         # Run scanning engine
-        report = await run_scan(url)
-        logger.info(f"Scan completed for {url}. Score: {report.get('overall_score')}")
-        # Store in database (legacy)
-        result = await db["scans"].insert_one(report)
-        report["_id"] = str(result.inserted_id)
+        audit_report_dict = await run_scan(url)
+        logger.info(f"Scan completed for {url}. Score: {audit_report_dict.get('audit_score')}")
         
-        # New Audit Report System mapping
-        mapped_recs = []
-        for r in report.get("recommendations", []):
-            mapped_recs.append({
-                "category": r.get("pillar", "General"),
-                "title": r.get("item", "Issue"),
-                "description": r.get("recommendation", ""),
-                "priority": r.get("priority", "High" if report.get("overall_score", 100) < 50 else "Medium"),
-                "status": "Open",
-                "current_problem": r.get("issue", ""),
-                "business_impact": r.get("business_impact", ""),
-                "technical_explanation": r.get("reason", ""),
-                "implementation_steps": r.get("how_to_fix", ""),
-                "estimated_time": r.get("estimated_time", ""),
-                "expected_score_improvement": r.get("expected_score_increase", 0)
-            })
-            
-        audit_report_dict = {
-            "website_url": report["url"],
-            "user_id": str(current_user["_id"]),
-            "user_name": current_user["full_name"],
-            "scan_type": "Full Audit",
-            "audit_score": report.get("overall_score", 0),
-            "grade": report.get("grade", "C"),
-            "category_scores": report.get("pillar_scores", {}),
-            "pillar_details": report.get("pillar_details", {}),
-            "recommendations": mapped_recs,
-            "issues_found": len(mapped_recs),
-            "technology_detections": report.get("technology_detections", []),
-            "performance_metrics": report.get("performance_metrics", {}),
-            "scan_status": "Completed"
-        }
+        audit_report_dict["user_id"] = str(current_user["_id"])
+        audit_report_dict["user_name"] = current_user.get("full_name", "")
+        audit_report_dict["email"] = current_user.get("email", "")
         
-        await process_audit_workflow(audit_report_dict, db)
+        audit_report_dict = await process_audit_workflow(audit_report_dict, db)
         
         print("Returning response")
         logger.info(f"Successfully processed workflow for {url}")
-        return report
+        return serialize_doc(audit_report_dict)
     except Exception as e:
         print("EXCEPTION ENCOUNTERED:")
         print(traceback.format_exc())
         logger.error(f"Error scanning website {url}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/scan/{scan_id}", response_model=AuditReportResponse)
+@router.get("/scan/{scan_id}", response_model=AuditReport)
 async def get_scan_report(scan_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(scan_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid scan ID format.")
     
-    report = await db["scans"].find_one({"_id": oid})
+    report = await db["audit_reports"].find_one({"_id": oid})
     if not report:
         raise HTTPException(status_code=404, detail="Scan report not found.")
     

@@ -7,11 +7,11 @@ async def main():
         print(f"\n--- Scanning {url} ---")
         try:
             report = await run_scan(url)
-            print("Score:", report["overall_score"])
-            print("Rendering mode:", report["debug"]["rendering_mode"])
-            for pillar, scores in report["pillar_scores"].items():
+            print("Score:", report["audit_score"])
+            print("Rendering mode:", report["performance_metrics"]["rendering_method"])
+            for pillar, scores in report["category_scores"].items():
                 print(f"Pillar {pillar}: {scores}")
-                print(f"Explanations: {report['explanations'][pillar]}")
+                # print(f"Explanations: {report['pillar_details'][pillar]['technical_explanation']}")
         except Exception as e:
             print(f"Failed to scan {url}: {e}")
 

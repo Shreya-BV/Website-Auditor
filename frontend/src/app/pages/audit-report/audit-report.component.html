@@ -27,19 +27,19 @@
           <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor"><path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/></svg>
           <span>Run Another Scan</span>
         </a>
-        <h1 class="report-title">Audit Report for <br><span class="url-text">{{ report.url }}</span></h1>
+        <h1 class="report-title">Audit Report for <br><span class="url-text">{{ report.website_url }}</span></h1>
         <p class="timestamp-text">Scanned on {{ report.created_at ? (report.created_at | date:'medium') : 'Not Available' }}</p>
       </div>
 
       <!-- Core Summary Row (Score + Lead Capture Side-by-Side) -->
       <div class="summary-grid">
         <!-- Circular Score Card -->
-        <div class="score-card glass-card" [ngClass]="getScoreColorClass(report.overall_score)">
+        <div class="score-card glass-card" [ngClass]="getScoreColorClass(report.audit_score)">
           <div class="radial-score">
-            <span class="score-number">{{ report.overall_score }}</span>
+            <span class="score-number">{{ report.audit_score }}</span>
             <span class="score-max">/100</span>
           </div>
-          <div class="grade-badge" [ngClass]="getScoreColorClass(report.overall_score)">
+          <div class="grade-badge" [ngClass]="getScoreColorClass(report.audit_score)">
             {{ report.grade }}
           </div>
           <p class="score-label">Overall Website Performance Grade</p>
@@ -150,22 +150,22 @@
             </div>
           } @else {
             <div class="recommendations-list">
-              @for (rec of report.recommendations; track rec.item) {
-                <div class="recommendation-item" [ngClass]="rec.pillar">
+              @for (rec of report.recommendations; track rec.title) {
+                <div class="recommendation-item" [ngClass]="rec.category">
                   <div class="rec-header">
-                    <span class="rec-pillar-tag" [ngClass]="rec.pillar">{{ getPillarTitle(rec.pillar) }}</span>
-                    <span class="priority-tag" [ngClass]="rec.priority?.toLowerCase() || 'medium'">
+                    <span class="rec-pillar-tag" [ngClass]="rec.category">{{ getPillarTitle(rec.category) }}</span>
+                    <span class="priority-tag" [ngClass]="rec.priority.toLowerCase() || 'medium'">
                       {{ rec.priority || 'Medium' }} Priority
                     </span>
                   </div>
-                  <h4 class="rec-item-title">{{ rec.issue || formatCheckName(rec.item) + ' Missing' }}</h4>
-                  <p class="rec-text main-recommendation">{{ rec.recommendation }}</p>
+                  <h4 class="rec-item-title">{{ rec.current_problem || formatCheckName(rec.title) + ' Missing' }}</h4>
+                  <p class="rec-text main-recommendation">{{ rec.description }}</p>
                   
                   <div class="rec-details-grid">
-                    @if(rec.reason) {
+                    @if(rec.technical_explanation) {
                       <div class="rec-detail-block">
                         <strong>Reason:</strong>
-                        <p>{{ rec.reason }}</p>
+                        <p>{{ rec.technical_explanation }}</p>
                       </div>
                     }
                     @if(rec.business_impact) {
@@ -174,18 +174,18 @@
                         <p>{{ rec.business_impact }}</p>
                       </div>
                     }
-                    @if(rec.how_to_fix) {
+                    @if(rec.implementation_steps) {
                       <div class="rec-detail-block">
                         <strong>How to Fix:</strong>
-                        <p>{{ rec.how_to_fix }}</p>
+                        <p>{{ rec.implementation_steps }}</p>
                       </div>
                     }
                     <div class="rec-meta-row">
                       @if(rec.estimated_time) {
                         <span class="meta-badge time">⏳ {{ rec.estimated_time }}</span>
                       }
-                      @if(rec.expected_score_increase) {
-                        <span class="meta-badge score">📈 +{{ rec.expected_score_increase }} Score</span>
+                      @if(rec.expected_score_improvement) {
+                        <span class="meta-badge score">📈 +{{ rec.expected_score_improvement }} Score</span>
                       }
                     </div>
                   </div>

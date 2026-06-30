@@ -56,6 +56,7 @@ class AuditReport(BaseModel):
     category_scores: Dict[str, float]
     pillar_details: Optional[Dict[str, PillarDetail]] = None
     recommendations: List[ReportRecommendation]
+    checks: Optional[Dict[str, Any]] = None
     issues_found: int = 0
     technology_detections: Optional[List[TechnologyDetection]] = None
     performance_metrics: Optional[PerformanceMetrics] = None

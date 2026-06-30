@@ -32,22 +32,7 @@ async def process_audit_workflow(report_dict: dict, db) -> dict:
     inserted_id = str(result.inserted_id)
     report_dict["_id"] = inserted_id
     
-    # Store history log
-    category_scores = report_dict.get("category_scores", {})
-    audit_history_record = {
-        "user_id": report_dict.get("user_id"),
-        "email": report_dict.get("email"),
-        "website_url": report_dict.get("website_url"),
-        "audit_score": report_dict.get("audit_score", 0),
-        "measurement_score": category_scores.get("Measurement", 0),
-        "retargeting_score": category_scores.get("Retargeting", 0),
-        "conversion_score": category_scores.get("Conversion", 0),
-        "trust_score": category_scores.get("Trust", 0),
-        "seo_score": category_scores.get("SEO/AI", 0),
-        "scan_timestamp": report_dict.get("created_at"),
-        "report_id": inserted_id
-    }
-    await db["audit_history"].insert_one(audit_history_record)
+
     
     if DEBUG_REPORT_FLOW:
         print(f"[DEBUG_REPORT_FLOW] PDF Generation Started for Report ID: {inserted_id}")
