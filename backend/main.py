@@ -25,8 +25,21 @@ from app.routes.audit import router as audit_router
 from app.routes.auth import router as auth_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("=== STARTUP LOGS ===")
+    logger.info("Backend Version: 1.0.0")
+    logger.info(f"Current Environment: {os.environ.get('ENVIRONMENT', 'development')}")
+    logger.info(f"Port Number: {os.environ.get('PORT', '8000')}")
+    
+    # Playwright Status
+    try:
+        import playwright
+        logger.info("Playwright Status: Installed and ready")
+    except Exception as e:
+        logger.error(f"Playwright Status: Error - {e}", exc_info=True)
+        
     # Startup database connection
     connect_db()
+    logger.info("MongoDB Connection: Initialization called")
     
     # SMTP Validation (Phase 2)
     smtp_host = os.environ.get("SMTP_HOST")
@@ -79,9 +92,13 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info(f"Incoming {request.method} request to {request.url.path}")
-    response = await call_next(request)
-    logger.info(f"Completed {request.method} {request.url.path} with status {response.status_code}")
-    return response
+    try:
+        response = await call_next(request)
+        logger.info(f"Completed {request.method} {request.url.path} with status {response.status_code}")
+        return response
+    except Exception as e:
+        logger.error(f"Unhandled Exception during {request.method} {request.url.path}: {e}", exc_info=True)
+        raise
 
 # Mount API router
 # Mount API routers
@@ -90,7 +107,8 @@ app.include_router(audit_router, prefix="/api/audit")
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Website Auditor API. The service is running."}
+    logger.info("Health Check accessed")
+    return {"message": "Welcome to the Website Auditor API. The service is running.", "status": "ok"}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
