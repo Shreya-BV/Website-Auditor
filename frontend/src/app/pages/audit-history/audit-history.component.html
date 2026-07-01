@@ -69,20 +69,38 @@
                   </td>
                   <td>
                     <span class="status-badge" [ngClass]="report.pdf_generated ? 'completed' : 'needs-improvement'">
-                      {{ report.pdf_generated ? 'Yes' : 'No' }}
+                      {{ report.pdf_generated ? '✔ Generated' : 'Failed' }}
                     </span>
                   </td>
                   <td>
-                    <span class="status-badge" [ngClass]="report.delivery_status === 'sent' ? 'completed' : 'needs-improvement'">
-                      {{ report.delivery_status === 'sent' ? 'Sent' : (report.delivery_status || 'Pending') | titlecase }}
+                    <span class="status-badge" [ngClass]="{
+                      'completed': report.delivery_status === 'sent',
+                      'warning': report.delivery_status === 'sending',
+                      'needs-improvement': report.delivery_status === 'failed',
+                      'default': !report.delivery_status || report.delivery_status === 'pending'
+                    }">
+                      @if (report.delivery_status === 'sent') { ✔ Sent }
+                      @else if (report.delivery_status === 'sending') { ⏳ Sending... }
+                      @else if (report.delivery_status === 'failed') { ❌ Failed }
+                      @else { Pending }
                     </span>
                   </td>
                   <td class="actions-col">
                     <div class="action-buttons">
-                      <button *ngIf="report.pdf_gridfs_id || report.pdf_path" (click)="downloadPdf(report._id || report.id, report, $event)" [disabled]="downloadingReportId === (report._id || report.id)" class="btn-icon" title="Download Report">
-                        <svg *ngIf="downloadingReportId !== (report._id || report.id)" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                        <span *ngIf="downloadingReportId === (report._id || report.id)" style="font-size:12px;">⏳</span>
-                      </button>
+                      @if (report.pdf_gridfs_id || report.pdf_path || report.pdf_generated) {
+                        <button (click)="viewPdf(report._id || report.id, $event)" [disabled]="viewingReportId === (report._id || report.id)" class="btn-icon view" title="View Report">
+                          <span *ngIf="viewingReportId === (report._id || report.id)" class="loading-icon">⏳</span>
+                          <svg *ngIf="viewingReportId !== (report._id || report.id)" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        </button>
+                        <button (click)="downloadPdf(report._id || report.id, report, $event)" [disabled]="downloadingReportId === (report._id || report.id)" class="btn-icon download" title="Download PDF">
+                          <span *ngIf="downloadingReportId === (report._id || report.id)" class="loading-icon">⏳</span>
+                          <svg *ngIf="downloadingReportId !== (report._id || report.id)" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        </button>
+                        <button (click)="resendEmail(report._id || report.id, report, $event)" [disabled]="resendingReportId === (report._id || report.id) || report.delivery_status === 'sending'" class="btn-icon resend" title="Resend Email">
+                          <span *ngIf="resendingReportId === (report._id || report.id)" class="loading-icon">⏳</span>
+                          <svg *ngIf="resendingReportId !== (report._id || report.id)" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
+                        </button>
+                      }
                       <button (click)="deleteReport(report._id || report.id, $event)" class="btn-icon delete" title="Delete Report">
                         <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
                       </button>

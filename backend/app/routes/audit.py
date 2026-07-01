@@ -171,7 +171,7 @@ async def get_audit_report(audit_id: str, db=Depends(get_database), current_user
         
     return serialize_doc(report)
 
-@router.get("/download/{audit_id}")
+@router.get("/{audit_id}/download")
 async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
@@ -191,7 +191,13 @@ async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_us
         raise HTTPException(status_code=404, detail="PDF file missing from database.")
         
     # Increment download count
-    await db["audit_reports"].update_one({"_id": oid}, {"$inc": {"download_count": 1}})
+    await db["audit_reports"].update_one(
+        {"_id": oid}, 
+        {
+            "$inc": {"download_count": 1},
+            "$set": {"last_downloaded": datetime.now(timezone.utc)}
+        }
+    )
         
     website_url = report.get("website_url", "unknown")
     clean_url = website_url.replace("https://", "").replace("http://", "").replace("www.", "").replace(".", "-").replace("/", "").strip("-")
@@ -211,8 +217,54 @@ async def download_audit_pdf(audit_id: str, db=Depends(get_database), current_us
         headers={"Content-Disposition": f'attachment; filename="{download_filename}"'}
     )
 
-@router.post("/retry-email/{audit_id}")
-async def retry_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
+@router.get("/{audit_id}/pdf")
+async def view_audit_pdf(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
+    try:
+        oid = ObjectId(audit_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid audit ID format.")
+        
+    report = await db["audit_reports"].find_one({"_id": oid})
+    if not report or not report.get("pdf_gridfs_id"):
+        raise HTTPException(status_code=404, detail="PDF not found.")
+        
+    gridfs_id = ObjectId(report["pdf_gridfs_id"])
+    fs = AsyncIOMotorGridFSBucket(db)
+    
+    try:
+        grid_out = await fs.open_download_stream(gridfs_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="PDF file missing from database.")
+        
+    # Increment view count
+    await db["audit_reports"].update_one(
+        {"_id": oid}, 
+        {
+            "$inc": {"view_count": 1},
+            "$set": {"last_viewed": datetime.now(timezone.utc)}
+        }
+    )
+        
+    website_url = report.get("website_url", "unknown")
+    clean_url = website_url.replace("https://", "").replace("http://", "").replace("www.", "").replace(".", "-").replace("/", "").strip("-")
+    date_str = report.get("created_at", datetime.now(timezone.utc)).strftime("%Y-%m-%d") if isinstance(report.get("created_at"), datetime) else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    view_filename = f"website-audit-{clean_url}-{date_str}.pdf"
+        
+    async def pdf_generator():
+        while True:
+            chunk = await grid_out.read(1024 * 1024)
+            if not chunk:
+                break
+            yield chunk
+            
+    return StreamingResponse(
+        pdf_generator(), 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": f'inline; filename="{view_filename}"'}
+    )
+
+@router.post("/{audit_id}/resend-email")
+async def resend_audit_email(audit_id: str, db=Depends(get_database), current_user: dict = Depends(get_current_user)):
     try:
         oid = ObjectId(audit_id)
     except Exception:

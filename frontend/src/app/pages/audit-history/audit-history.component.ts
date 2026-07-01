@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuditService } from '../../services/audit.service';
 import { environment } from '../../../environments/environment';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-audit-history',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, MatSnackBarModule],
   templateUrl: './audit-history.component.html',
   styleUrl: './audit-history.component.scss'
 })
@@ -16,8 +17,11 @@ export class AuditHistoryComponent implements OnInit {
   isLoading = true;
   errorMessage = '';
   downloadingReportId: string | null = null;
+  viewingReportId: string | null = null;
+  resendingReportId: string | null = null;
 
   private auditService = inject(AuditService);
+  private snackBar = inject(MatSnackBar);
 
   ngOnInit() {
     this.loadHistory();
@@ -61,8 +65,50 @@ export class AuditHistoryComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to download PDF', err);
-        alert('Failed to download PDF report. It may not exist.');
+        this.snackBar.open('Failed to download PDF report.', 'Close', { duration: 3000 });
         this.downloadingReportId = null;
+      }
+    });
+  }
+
+  viewPdf(reportId: string, event: Event) {
+    event.stopPropagation();
+    if (this.viewingReportId) return;
+    this.viewingReportId = reportId;
+
+    this.auditService.viewAuditPdf(reportId).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        window.open(url, '_blank');
+        this.viewingReportId = null;
+      },
+      error: (err) => {
+        console.error('Failed to view PDF', err);
+        this.snackBar.open('Failed to load PDF for viewing.', 'Close', { duration: 3000 });
+        this.viewingReportId = null;
+      }
+    });
+  }
+
+  resendEmail(reportId: string, report: any, event: Event) {
+    event.stopPropagation();
+    if (this.resendingReportId) return;
+    this.resendingReportId = reportId;
+    
+    // Optimistic update
+    const previousStatus = report.delivery_status;
+    report.delivery_status = 'sending';
+
+    this.auditService.resendEmail(reportId).subscribe({
+      next: (res) => {
+        report.delivery_status = 'sent';
+        this.resendingReportId = null;
+        this.snackBar.open('Email sent successfully!', 'Close', { duration: 3000 });
+      },
+      error: (err) => {
+        report.delivery_status = 'failed';
+        this.resendingReportId = null;
+        this.snackBar.open('Failed to send email.', 'Close', { duration: 3000 });
       }
     });
   }

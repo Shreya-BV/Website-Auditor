@@ -32,10 +32,14 @@ export class AuditService {
   }
 
   resendEmail(id: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/audit/retry-email/${id}`, {});
+    return this.http.post<any>(`${this.apiUrl}/audit/${id}/resend-email`, {});
   }
 
   downloadAuditPdf(id: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/audit/download/${id}`, { responseType: 'blob' });
+    return this.http.get(`${this.apiUrl}/audit/${id}/download`, { responseType: 'blob' });
+  }
+
+  viewAuditPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/audit/${id}/pdf`, { responseType: 'blob' });
   }
 }

@@ -63,7 +63,17 @@ class AuditReport(BaseModel):
     scan_status: str = "Completed"
     pdf_path: Optional[str] = None
     pdf_url: Optional[str] = None
+    pdf_generated: bool = False
+    pdf_gridfs_id: Optional[str] = None
+    pdf_filename: Optional[str] = None
     email_sent: bool = False
+    email_sent_at: Optional[datetime] = None
+    delivery_status: str = "Pending"
+    error_message: Optional[str] = None
+    download_count: int = 0
+    last_downloaded: Optional[datetime] = None
+    view_count: int = 0
+    last_viewed: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
